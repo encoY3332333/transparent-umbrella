@@ -1,0 +1,113 @@
+@startuml seq-uc05-adjust
+' UC-05 行程局部调整 · 顺序图
+' 对应 SRS 3.3.5、ADR-005 与 docs/api.md 5.1–5.3
+' 核心设计：预览与保存共用同一段 applyOperation()，预览不落库
+
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "游客" as T
+boundary "AdjustPanel" as UI
+control "ItineraryManager" as IM
+participant "AdjustService" as AS
+participant "FeasibilityChecker" as FC
+participant "MapServerAdapter" as MSA
+entity "Itinerary" as IT
+entity "Activity" as ACT
+
+== 1. 拖拽调序（预览）==
+T -> UI : 拖动「大雁塔」从第 2 天到第 3 天
+UI -> UI : 乐观更新：立即重绘时间轴
+UI -> UI : 防抖 300ms
+UI -> IM : PUT /api/itineraries/{id}/preview-adjust {op:MOVE, ...}
+IM -> AS : preview(id, operations)
+AS -> IT : 加载行程（只读，不加事务）
+AS -> AS : 反序列化为内存副本（copy）
+AS -> AS : applyOperation(copy, op)   ← 唯一实现
+alt 目标活动 locked == true
+  AS --> UI : 409 ADJUST_LOCKED_ACTIVITY（BR-16）
+  UI -> UI : 回滚乐观更新，提示「该活动已锁定」
+else 可移动
+  AS -> AS : 重算受影响的相邻两项
+  AS -> MSA : getTravelTime(prev, cur), getTravelTime(cur, next)
+  MSA --> AS : 时长
+  AS -> FC : revalidate(copy)
+  FC --> AS : conflicts[]
+  AS --> UI : 200 {itinerary副本, conflicts[], affectedActivities[]}
+  UI -> UI : 以服务端结果为准，覆盖乐观更新
+  alt conflicts 含 ERROR
+    UI --> T : 红色冲突提示 + 建议方案
+  else 仅 WARN 或无冲突
+    UI --> T : 绿色「已调整，可保存」
+  end
+end
+
+== 2. 替换 POI（预览）==
+T -> UI : 点击「换一个」，选择备选 POI
+UI -> IM : PUT .../preview-adjust {op:REPLACE, activityId, newPoiId}
+IM -> AS : preview(id, [REPLACE])
+AS -> AS : 副本上替换 poiId / poiName / cost / 时长
+AS -> FC : revalidate(copy)  检查新 POI 开放时间是否覆盖时段
+FC --> AS : conflicts[]
+AS --> UI : 200 {itinerary, conflicts}
+
+== 3. 撤销（仍是预览）==
+T -> UI : 点击「撤销」
+UI -> IM : PUT .../preview-adjust {op: 反向操作}
+note right of AS
+  **ADR-005 的关键收益**
+  因为前面所有操作都没落库，
+  「撤销」不需要逆操作表，
+  只要回到上一个预览状态即可。
+  前端甚至可以直接丢弃未保存的预览，
+  重新 GET 一次原行程
+end note
+AS --> UI : 200 {itinerary（回到原状）, conflicts:[]}
+
+== 4. 保存（落库）==
+T -> UI : 点击「保存」
+UI -> IM : PUT /api/itineraries/{id}/adjust {operations, Idempotency-Key}
+IM -> AS : adjust(id, operations)
+AS -> IT : 加载行程（加行锁 SELECT ... FOR UPDATE）
+alt 当前 version ≥ 10（BR-14）
+  AS --> UI : 409 ADJUST_VERSION_LIMIT
+  UI --> T : 「历史版本已达上限，请先删除旧版本」（本版不支持）
+else
+  AS -> AS : applyOperation(entity, ops)   ← 与预览同一实现
+  AS -> FC : revalidate(entity)
+  alt 存在 ERROR 级冲突
+    AS -> AS : 事务回滚
+    AS --> UI : 409 ADJUST_TIME_OVERLAP
+    UI --> T : 「调整后存在时间冲突，无法保存」
+  else
+    AS -> ACT : 批量更新 activities
+    AS -> IT : 旧版本 status = SUPERSEDED
+    AS -> IT : 新版本 version+1, status = SAVED
+    AS --> UI : 200 {id, version, updatedAt}
+    UI --> T : 「已保存，版本 v2」
+  end
+end
+
+== 5. 并发编辑（扩展流程 3d）==
+T2 -> IM : 另一设备提交 adjust
+IM -> AS : adjust(id, ops)
+AS -> AS : 检测 version 已变化（乐观锁）
+AS --> T2 : 409 CONFLICT {message:"行程已在其他设备修改"}
+T2 --> T2 : 提示「以最后保存为准」并刷新
+
+note over AS, FC
+  **必须在 Code Review 中检查**
+  `applyOperation()` 只能改内存对象，
+  **禁止**调用任何 Mapper 的写方法。
+  一旦写库，预览语义即失效。
+end note
+
+note over AS, MSA
+  **性能**：调序响应 ≤ 1.5s（NFR-P4）
+  只重算受影响相邻两项（BR-15），
+  不通算全行程通勤矩阵
+end note
+
+@enduml

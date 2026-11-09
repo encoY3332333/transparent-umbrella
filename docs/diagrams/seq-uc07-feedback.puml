@@ -1,0 +1,60 @@
+@startuml seq-uc07-feedback
+' UC-07 规划反馈 · 顺序图
+' 对应 SRS 3.3.7 与 docs/api.md 8.1 / 8.2
+
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "游客" as T
+boundary "FeedbackForm" as UI
+control "FeedbackManager" as FM
+entity "Feedback" as FB
+entity "Itinerary" as IT
+
+== 1. 打开反馈表单 ==
+T -> UI : 在结果页点击「反馈」
+UI -> FM : GET /api/feedback/tags
+FM --> UI : 200 ["行程太赶","行程太松","推荐不准确",...]
+UI --> T : 展示星级 + 标签多选 + 文本框
+
+== 2. 填写并提交 ==
+T -> UI : 选 4 星，勾选「行程太赶」，填写 200 字备注
+UI -> UI : 校验：rating 1~5，tags ≤ 5，comment ≤ 500
+UI -> FM : POST /api/itineraries/{id}/feedback
+FM -> IT : findById(id) 取 strategyVersion
+alt 非本人行程
+  FM --> UI : 403 FORBIDDEN
+else
+  FM -> FB : save({itineraryId, touristId, rating, tags, comment, strategyVersion})
+  note right of FB
+    **BR-20**：反馈必须关联
+    生成时的策略版本号，
+    否则无法判断「策略调整是否有效」
+  end note
+  FB --> FM : feedbackId
+  FM --> UI : 200 {id, strategyVersion}
+  UI --> T : 「感谢反馈」（表单收起，同一行程不重复弹窗）
+end
+
+== 3. 后台查看（管理员）==
+note over FM, IT
+  **本版范围**：只存储，不做统计分析。
+  反馈数据的价值在 v1.0 之后
+  （按策略版本对比满意度，
+  指导 #13 的权重调整）。
+  这条写进 SRS「不做什么」清单，
+  避免答辩时被问「反馈怎么用」而答不上来
+end note
+
+note over UI
+  **触发时机**
+  · 用户保存行程后静默展示一次
+  · 或从「我的行程」手动进入
+  · 同一行程只弹一次（前端 localStorage 记 id）
+  **不做**打断式弹窗——行程刚生成完，
+  用户还没体验，此时收集反馈没有意义
+end note
+
+@enduml

@@ -1,0 +1,61 @@
+@startuml state-itinerary
+' 行程（Itinerary）状态图 · 六态
+' 对应 SRS 3.5 与 docs/architecture.md 第 4 章
+
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam state {
+  BackgroundColor #F8FAFC
+  BorderColor #64748B
+}
+
+[*] --> PROPOSED : 生成成功\nPlanManager.generate()
+
+PROPOSED : **PROPOSED** 已生成待确认\n用户尚未决定是否采纳
+PROPOSED --> SAVED : 点击「保存」\nPOST /{id}/save
+PROPOSED --> ARCHIVED : 用户放弃 / 离开页面\nDELETE /{id}/proposed
+PROPOSED --> ADOPTED : 用户进入调整流程\n（隐式采纳）
+
+ADOPTED : **ADOPTED** 已采纳、调整中\n仅存在于会话内，不落库为独立状态\n（用于前端会话状态标识）
+ADOPTED --> SAVED : 调整完成后保存
+ADOPTED --> PROPOSED : 放弃调整，回到原方案
+
+SAVED : **SAVED** 已保存\n出现在「我的行程」列表\n可分享、可反馈、可再调整
+SAVED --> SAVED : 再次调整保存\nversion + 1，旧版 → SUPERSEDED
+SAVED --> COMPLETED : 行程结束日期已过\n（定时任务标记，或用户手动标记）
+SAVED --> ARCHIVED : 用户删除
+
+SUPERSEDED : **SUPERSEDED** 已被新版本取代\n只读，用于版本历史\n最多保留 10 个（BR-14）
+SUPERSEDED --> ARCHIVED : 超过 10 个时\n最早的被清理
+
+COMPLETED : **COMPLETED** 已完成\n可提交反馈（UC-07）
+COMPLETED --> ARCHIVED : 用户归档
+
+ARCHIVED : **ARCHIVED** 已归档\n不在列表默认展示\n可通过 id 直接访问
+
+note right of PROPOSED
+  **为什么 PROPOSED 要落库**
+  生成耗时 5~10 秒，
+  结果必须持久化，
+  否则用户刷新就没了。
+  但**不**进「我的行程」列表，
+  避免用户被未确认的方案淹没
+end note
+
+note bottom of SUPERSEDED
+  **BR-14 的落地方式**
+  保存新版本时，旧版 status 置 SUPERSEDED；
+  若该行程的 SUPERSEDED 数量 > 10，
+  最早的置 ARCHIVED 并从版本历史隐藏。
+  **不物理删除**——反馈可能引用了旧版本
+end note
+
+note right of COMPLETED
+  **本版简化**
+  不做定时任务自动标记，
+  由用户在列表页手动点「已完成」。
+  理由：课程演示周期内行程日期都是未来，
+  自动标记没有可演示的场景
+end note
+
+@enduml

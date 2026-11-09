@@ -1,0 +1,184 @@
+@startuml class-analysis
+' 智能旅游规划系统 · 分析类图（边界类 / 控制类 / 实体类）
+' 对应 SRS 3.4 节
+' 类名与 backend/src/main/java/com/smarttrip/ 下保持一致
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam packageStyle rectangle
+
+package "边界类 Boundary" #E8F0FE {
+  class LoginPage <<boundary>>
+  class PreferencePanel <<boundary>>
+  class ConditionForm <<boundary>>
+  class ResultPage <<boundary>>
+  class AdjustPanel <<boundary>>
+  class SharePage <<boundary>>
+  class FeedbackForm <<boundary>>
+  class AdminPOIPage <<boundary>>
+  class AdminStrategyPage <<boundary>>
+}
+
+package "控制类 Control" #FFF4E5 {
+  class AuthManager <<control>>
+  class ConditionValidator <<control>>
+  class PlanManager <<control>>
+  class ItineraryManager <<control>>
+  class FeedbackManager <<control>>
+  class POIManager <<control>>
+  class StrategyManager <<control>>
+}
+
+package "实体类 Entity" #EAF7EA {
+  class Tourist
+  class Preference
+  class TravelCondition
+  class Itinerary
+  class ItineraryDay
+  class Activity
+  class POI
+  class CrowdIndex
+  class Feedback
+  class StrategyParameter
+}
+
+package "引擎 Engine" #F3E8FF {
+  class CandidateSelector <<engine>>
+  class StrategyEngine <<engine>>
+  class ScoreCalculator <<engine>>
+  class FeasibilityChecker <<engine>>
+  class BudgetIterator <<engine>>
+  class CrowdIndexCalculator <<engine>>
+}
+
+package "适配器 Adapter" #FDE8E8 {
+  class WeatherServerAdapter <<adapter>>
+  class MapServerAdapter <<adapter>>
+  class TrafficServerAdapter <<adapter>>
+  class EventServerAdapter <<adapter>>
+  class BookingServerAdapter <<adapter>>
+  class AuthServerAdapter <<adapter>>
+}
+
+' ---------- 边界 → 控制 ----------
+LoginPage --> AuthManager
+PreferencePanel --> AuthManager
+ConditionForm --> ConditionValidator
+ConditionForm --> PlanManager
+ResultPage --> PlanManager
+ResultPage --> ItineraryManager
+AdjustPanel --> ItineraryManager
+SharePage --> ItineraryManager
+FeedbackForm --> FeedbackManager
+AdminPOIPage --> POIManager
+AdminStrategyPage --> StrategyManager
+
+' ---------- 控制 → 实体 ----------
+AuthManager --> Tourist
+AuthManager --> Preference
+AuthManager --> AuthServerAdapter
+
+ConditionValidator --> TravelCondition
+ConditionValidator --> MapServerAdapter
+
+PlanManager --> Itinerary
+PlanManager --> TravelCondition
+PlanManager --> CandidateSelector
+PlanManager --> StrategyEngine
+PlanManager --> FeasibilityChecker
+PlanManager --> BudgetIterator
+
+ItineraryManager --> Itinerary
+ItineraryManager --> ItineraryDay
+ItineraryManager --> Activity
+ItineraryManager --> MapServerAdapter
+
+FeedbackManager --> Feedback
+POIManager --> POI
+StrategyManager --> StrategyParameter
+
+' ---------- 引擎内部 ----------
+CandidateSelector --> POI
+CandidateSelector --> CrowdIndexCalculator
+CrowdIndexCalculator --> CrowdIndex
+CrowdIndexCalculator --> TrafficServerAdapter
+CandidateSelector --> EventServerAdapter
+
+StrategyEngine --> ScoreCalculator
+StrategyEngine --> TravelCondition
+ScoreCalculator --> CrowdIndex
+ScoreCalculator --> WeatherServerAdapter
+BudgetIterator --> Itinerary
+
+' ---------- 实体关系 ----------
+Tourist "1" -- "0..1" Preference
+Tourist "1" -- "0..*" Itinerary
+Itinerary "1" -- "1..15" ItineraryDay
+ItineraryDay "1" -- "1..*" Activity
+Activity "*" -- "1" POI
+Itinerary "1" -- "0..1" Feedback
+POI "1" -- "0..*" CrowdIndex
+
+' ---------- 类细节 ----------
+class Itinerary {
+  - id : Long
+  - touristId : Long
+  - status : ItineraryStatus
+  - version : int
+  - totalCost : BigDecimal
+  - strategyVersion : int
+  + addDay(d : ItineraryDay)
+  + recalcTotalCost() : BigDecimal
+}
+
+class Activity {
+  - id : Long
+  - poiId : Long
+  - poiName : String
+  - category : ActivityCategory
+  - startTime : LocalDateTime
+  - endTime : LocalDateTime
+  - cost : BigDecimal
+  - isEstimated : boolean
+  - locked : boolean
+  + overlaps(other : Activity) : boolean
+}
+
+class POI {
+  - id : Long
+  - name : String
+  - city : String
+  - category : POICategory
+  - lat / lng : BigDecimal
+  - openTime / closeTime : LocalTime
+  - price : BigDecimal
+  - capacity : int
+  - status : POIStatus
+}
+
+class StrategyEngine {
+  + plan(cond : TravelCondition,
+         pois : List<POI>,
+         ctx : PlanContext) : List<Itinerary>
+}
+
+class CrowdIndex {
+  - poiId : Long
+  - date : LocalDate
+  - value : Integer   ' 0~100，null 表示 UNKNOWN
+}
+
+note bottom of Itinerary
+  **状态六态**：PROPOSED / ADOPTED /
+  SAVED / SUPERSEDED / COMPLETED / ARCHIVED
+  最多保留 10 个历史版本（BR-14）
+end note
+
+note right of StrategyEngine
+  ADR-002：接口先行
+  ADR-003：贪心 + 综合评分
+  不依赖 Mapper，只收领域对象
+end note
+
+@enduml

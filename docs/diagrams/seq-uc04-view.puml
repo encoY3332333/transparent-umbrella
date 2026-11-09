@@ -1,0 +1,70 @@
+@startuml seq-uc04-view
+' UC-04 行程结果查看 · 顺序图
+' 对应 SRS 3.3.4 与 docs/api.md 4.1–4.3
+
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "游客" as T
+boundary "ResultPage" as UI
+control "ItineraryManager" as IM
+entity "Itinerary" as IT
+entity "ItineraryDay" as DAY
+entity "Activity" as ACT
+
+== 1. 加载行程 ==
+T -> UI : 打开结果页 / 从「我的行程」点入
+UI -> IM : GET /api/itineraries/{id}
+IM -> IT : findById(id)
+IM -> IM : 校验归属：itinerary.touristId == 当前用户
+alt 非本人
+  IM --> UI : 403 FORBIDDEN
+  UI --> T : 「无权查看」并返回列表
+else 本人
+  IM -> DAY : listByItineraryId(id)  [按 dayIndex]
+  IM -> ACT : listByDayIds(dayIds)  [批量，避免 N+1]
+  IM -> IM : 组装 DTO：每天天气 + 活动 + 费用小计
+  IM --> UI : 200 {itinerary}
+end
+
+== 2. 首屏渲染（NFR-P2 ≤ 3s）==
+UI -> UI : 渲染顶部概览（标题/日期/总费用/预算进度条）
+UI -> UI : 渲染时间轴（虚拟滚动，只渲染可视区）
+UI -> UI : 懒加载每日活动图片
+UI -> UI : 异步初始化地图，绘制 POI 标记与每日路线
+UI --> T : 展示「推荐理由」折叠面板 + 降级提示条
+
+== 3. 切换视图 ==
+T -> UI : 在「时间轴 / 地图 / 预算」间切换
+UI -> UI : 纯前端切换，不重新请求（数据已在内存）
+UI --> T : 展示对应视图
+
+== 4. 导出日历（可选）==
+T -> UI : 点击「导出到日历」
+UI -> IM : GET /api/itineraries/{id}/export.ics
+IM -> IM : 每个 Activity 生成一个 VEVENT
+IM --> UI : text/calendar 文件流
+UI --> T : 触发浏览器下载
+
+== 5. 离开页面 ==
+T -> UI : 返回 / 关闭
+alt 行程状态 == PROPOSED 且用户未保存
+  UI -> IM : DELETE /api/itineraries/{id}/proposed
+  IM -> IT : status = ARCHIVED
+  note right of UI
+    避免 PROPOSED 记录堆积。
+    若用户是从历史链接回来，
+    ARCHIVED 行程仍可通过 id 直接访问
+  end note
+end
+
+note over IM, ACT
+  **性能要点**
+  · 批量查询 activity，禁止在循环里查
+  · 虚拟滚动，120 条活动也只渲染可视区 ~10 条
+  · 地图标记使用聚合，避免 120 个 marker 卡顿
+end note
+
+@enduml

@@ -1,0 +1,90 @@
+@startuml seq-uc09-strategy
+' UC-09 推荐策略参数配置 · 顺序图
+' 对应 SRS 3.3.9 与 docs/api.md 10.1–10.3
+
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "管理员" as A
+boundary "AdminStrategyPage" as UI
+control "StrategyManager" as SM
+entity "StrategyParameter" as SP
+participant "缓存 (Caffeine)" as CACHE
+
+== 1. 查看当前策略 ==
+A -> UI : 打开策略配置页
+UI -> SM : GET /api/admin/strategies/current
+SM -> CACHE : 取生效版本
+alt 缓存未命中
+  SM -> SP : findTopByOrderByVersionDesc()
+  SP --> SM : v3
+  SM -> CACHE : put(v3, TTL 10min)
+end
+SM --> UI : 200 {version:3, weights, holidayFactors, effectiveFrom}
+UI --> A : 展示五项权重滑块 + 节假日系数表
+
+== 2. 调整权重 ==
+A -> UI : 拖动滑块（偏好 0.10→0.20，费用 0.28→0.18）
+UI -> UI : 实时显示「合计 1.00」
+note right of UI
+  前端做**即时和校验**只是体验优化，
+  **不作为最终依据**。
+  服务端必须重新校验，
+  因为前端可能被绕过或存在浮点误差
+end note
+
+== 3. 发布新版本 ==
+A -> UI : 点击「发布」
+UI -> SM : POST /api/admin/strategies {weights, holidayFactors}
+SM -> SM : 校验五项权重之和 == 1（误差 < 0.001，BR-23）
+alt 和不等于 1
+  SM --> UI : 400 PARAM_INVALID {field:"weights", reason:"sum=1.02"}
+  UI --> A : 「权重合计必须为 1，当前 1.02」
+else
+  SM -> SM : 校验每项 ∈ [0,1]，holidayFactors ∈ [0.5,5.0]
+  alt 越界
+    SM --> UI : 400 PARAM_INVALID
+  else
+    SM -> SP : insert(version = max+1, createdBy, effectiveFrom = now)
+    note right of SP
+      **BR-24**：版本不可删。
+      这是为了让「某次评估用了哪个版本」
+      永远可查（BR-20 的反馈关联依赖它）
+    end note
+    SP --> SM : version = 4
+    SM -> CACHE : evict / put(v4)
+    SM --> UI : 201 {version:4}
+    UI --> A : 「已发布 v4，仅对此后生成的行程生效」
+  end
+end
+
+== 4. 版本历史 ==
+A -> UI : 切换到「历史」标签
+UI -> SM : GET /api/admin/strategies
+SM -> SP : findAllOrderByVersionDesc()
+SP --> SM : v4, v3, v2, v1
+SM --> UI : 200 列表
+UI --> A : 展示（只读，无「回滚」按钮）
+note right of UI
+  **本版不支持回滚**。
+  若要退回旧权重，正确做法是
+  把旧参数重新发布为一个新版本，
+  而不是把 version 改回去——
+  这样时间线始终是单向的
+end note
+
+== 5. 生效机制 ==
+note over SM, CACHE
+  **生效时机**
+  · 新版本只影响**此后**的生成请求
+  · 已生成的行程不回溯重算
+    （否则用户昨天看到的方案今天变了）
+  · 反馈记录里存有 strategyVersion，
+    可据此对比不同版本的满意度
+  · PlanManager 每次生成时读取当前版本号，
+    写入 itinerary.strategyVersion
+end note
+
+@enduml

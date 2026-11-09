@@ -1,0 +1,59 @@
+@startuml state-activity
+' 活动（Activity）状态图 · 锁定与调整生命周期
+' 对应 SRS 3.5、ADR-005
+
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+
+[*] --> PLANNED : 排程引擎装入\nStrategyEngine 分配时段
+
+PLANNED : **PLANNED** 已排定、未锁定\n可被自动重排移动
+PLANNED --> LOCKED : 用户点击「锁定」\nop = LOCK
+LOCKED --> PLANNED : 用户点击「解锁」\nop = UNLOCK
+
+LOCKED : **LOCKED** 已锁定\nlocked = true\n重排时位置不变（BR-16）
+
+PLANNED --> CONFLICT : 调整后与相邻活动\n时间重叠
+LOCKED --> CONFLICT : 被其他活动挤压
+
+CONFLICT : **CONFLICT** 有冲突待处理\nseverity = ERROR\n不允许保存
+CONFLICT --> PLANNED : 用户修正时段\n或移动冲突方
+
+PLANNED --> REPLACED : 用户替换为其他 POI\nop = REPLACE
+LOCKED --> REPLACED : 锁定项也可手动替换\n（锁定只阻止自动重排）
+
+REPLACED : **REPLACED** 已被替换\n旧记录保留为 SUPERSEDED\n仅在版本历史中可见
+
+PLANNED --> REMOVED : 用户删除\nop = DELETE
+LOCKED --> REMOVED : 需先解锁\n否则 409 ADJUST_LOCKED_ACTIVITY
+
+REMOVED : **REMOVED** 已删除\n从当前版本移除
+
+REPLACED --> [*]
+REMOVED --> [*]
+
+note right of LOCKED
+  **锁定的语义边界**
+  · 阻止：REORDER_LOCKED 自动重排
+  · **不阻止**：用户手动 MOVE / REPLACE / DELETE
+  这是刻意的——锁定是「别动我的安排」，
+  不是「连我自己都不能改」
+end note
+
+note bottom of CONFLICT
+  **冲突是瞬态**
+  只存在于预览阶段的内存副本中，
+  **不落库**（ADR-005）。
+  若用户执意保存，
+  服务端 revalidate 会再次拦截并返回 409，
+  保证库里不存在带冲突的行程
+end note
+
+note left of PLANNED
+  **时间的不可变约束**
+  同一天内所有 Activity 满足
+  startTime[i] < endTime[i] ≤ startTime[i+1]
+  一旦违反即进入 CONFLICT 态
+end note
+
+@enduml

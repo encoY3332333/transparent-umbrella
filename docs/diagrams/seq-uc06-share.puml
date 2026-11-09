@@ -1,0 +1,93 @@
+@startuml seq-uc06-share
+' UC-06 行程保存与分享 · 顺序图
+' 对应 SRS 3.3.6 与 docs/api.md 6.1 / 7.1 / 7.2
+
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "游客（所有者）" as T
+actor "访客" as V
+boundary "ResultPage" as UI
+boundary "SharePage" as SPI
+control "ItineraryManager" as IM
+control "ShareService" as SS
+entity "Itinerary" as IT
+
+== 1. 保存行程 ==
+T -> UI : 点击「保存行程」并输入标题
+alt 未登录
+  UI --> T : 跳转登录页（UC-01）
+  T -> UI : 登录成功，带原 itineraryId 返回
+end
+UI -> IM : POST /api/itineraries/{id}/save {title}
+IM -> IT : findById(id) 并校验归属
+alt status != PROPOSED
+  IM --> UI : 409 CONFLICT（已保存过）
+  UI --> T : 「该行程已保存」
+else
+  IM -> IT : status = SAVED, title = 用户输入
+  IM --> UI : 200 {id, status:SAVED}
+  UI --> T : 「已保存到我的行程」
+end
+
+== 2. 生成分享链接 ==
+T -> UI : 点击「分享」
+UI -> IM : POST /api/itineraries/{id}/share {expiresInDays:7}
+IM -> SS : createShareToken(itineraryId, expiresInDays)
+SS -> SS : payload = {id, iat, exp}
+SS -> SS : token = base64(payload) + "." + HMAC-SHA256(payload, SECRET)
+note right of SS
+  **BR-17**：签名防遍历。
+  没有 SECRET 无法伪造 token，
+  且不能通过遍历 id 访问他人行程
+end note
+SS -> IT : 记录 shareToken / shareExpiresAt
+SS --> IM : {token, url, expiresAt}
+IM --> UI : 200
+UI --> T : 展示二维码 + 复制链接按钮
+
+== 3. 访客打开分享链接（免登录）==
+V -> SPI : 访问 /share/{token}
+SPI -> SS : GET /api/share/{token}  （公开接口）
+SS -> SS : 验签 + 检查 exp
+alt 验签失败 / 已过期
+  SS --> SPI : 400 SHARE_TOKEN_INVALID
+  SPI --> V : 「链接已失效」
+else
+  SS -> IT : findById(payload.id)
+  alt 行程已删除
+    SS --> SPI : 404 SHARE_ITINERARY_NOT_FOUND
+    SPI --> V : 「该行程不存在」
+  else
+    SS -> SS : 组装**脱敏 DTO**
+    note right of SS
+      剔除：touristId、phone、
+      真实姓名、version、
+      内部 activityId
+    end note
+    SS --> SPI : 200 {itinerary（脱敏）}
+    SPI --> V : 只读展示时间轴 + 地图
+  end
+end
+
+== 4. 访客的后续动作 ==
+V -> SPI : 点击「我也要规划」
+SPI --> V : 跳转首页（无需登录即可用 UC-02/UC-03）
+note over SPI
+  **产品设计**：分享页是获客入口。
+  访客不需要登录就能查看，
+  也不需要登录就能生成行程（BR-03），
+  只在「保存」时才要求登录
+end note
+
+note over SS
+  **安全要点**
+  · SECRET 存环境变量 SHARE_SECRET
+  · token 不含任何 PII，泄露也只暴露行程内容
+  · 脱敏在 DTO 组装阶段完成，
+    不依赖前端隐藏字段
+end note
+
+@enduml

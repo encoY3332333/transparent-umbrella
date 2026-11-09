@@ -1,0 +1,61 @@
+@startuml state-adjust
+' 行程调整事务状态图 · 预览 / 保存 两条路径
+' 对应 ADR-005 与 SRS 3.3.5
+
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+
+[*] --> LOADED : GET 行程\n（已保存的 SAVED 版本）
+
+LOADED : **LOADED** 已加载\n数据库中的当前版本
+LOADED --> PREVIEWING : 用户发起调整操作\nPUT /preview-adjust
+
+PREVIEWING : **PREVIEWING** 预览中\n内存副本，**不落库**\n每次操作都基于上一次预览结果
+
+PREVIEWING --> PREVIEWING : 继续调整\n（调序 / 替换 / 删增 / 锁定）
+
+PREVIEWING --> HAS_CONFLICT : FeasibilityChecker\n发现 ERROR 级冲突
+HAS_CONFLICT --> PREVIEWING : 用户修正\n或撤销上一步
+HAS_CONFLICT --> LOADED : 用户放弃调整\n（丢弃预览，重新加载）
+
+PREVIEWING --> READY : 无 ERROR 冲突\n（WARN 不阻止保存）
+READY : **READY** 可保存\n存在待保存的变更集
+READY --> PREVIEWING : 继续调整
+READY --> LOADED : 撤销全部变更
+
+READY --> SAVING : 点击「保存」\nPUT /adjust\n带 Idempotency-Key
+SAVING : **SAVING** 保存中\n事务内：SELECT FOR UPDATE → revalidate → 写库
+
+SAVING --> SAVED : 校验通过\nversion + 1\n旧版 → SUPERSEDED
+SAVING --> PREVIEWING : 校验失败（409）\n事务回滚，回到预览
+SAVING --> SAVED : 重复提交（幂等命中）\n直接返回首次结果
+
+SAVED : **SAVED** 已保存\n新版本落库，可继续调整
+SAVED --> PREVIEWING : 再次调整
+SAVED --> [*]
+
+note right of PREVIEWING
+  **ADR-005 的核心**
+  预览与保存共用 `applyOperation()`。
+  因此「预览说可以」与「保存能成功」
+  在逻辑上必然一致，
+  唯一可能导致失败的是并发（乐观锁）。
+end note
+
+note bottom of SAVING
+  **为什么需要 Idempotency-Key**
+  用户双击「保存」会发两个请求，
+  若不加幂等，会生成 v2 和 v3 两个版本，
+  而 v2 的内容与 v3 完全相同——
+  白白吃掉一个版本配额（只有 10 个）。
+end note
+
+note left of HAS_CONFLICT
+  **冲突不阻塞预览**
+  用户可以带着冲突继续调整，
+  只是不能保存。
+  这样避免了「每拖一次就弹一次红框」
+  的打断式体验。
+end note
+
+@enduml

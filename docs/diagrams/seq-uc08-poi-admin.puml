@@ -1,0 +1,85 @@
+@startuml seq-uc08-poi-admin
+' UC-08 POI 与活动数据维护 · 顺序图
+' 对应 SRS 3.3.8 与 docs/api.md 9.1–9.4
+
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "管理员" as A
+boundary "AdminPOIPage" as UI
+control "POIManager" as PM
+entity "POI" as POI
+participant "MapServerAdapter" as MSA
+
+== 1. 查询 POI ==
+A -> UI : 输入城市 / 关键字 / 状态
+UI -> PM : GET /api/admin/pois?city=&keyword=&status=&page=
+PM -> POI : 分页查询（MyBatis-Plus 条件构造）
+POI --> PM : Page<POI>
+PM --> UI : 200 分页列表
+UI --> A : 表格展示（支持按更新时间排序）
+
+== 2. 新增 POI ==
+A -> UI : 点击「新增」，填写名称/城市/类别/坐标/时间/价格/承载量
+UI -> MSA : 地址转坐标（辅助填表，失败可手填）
+MSA --> UI : {lat, lng}
+UI -> PM : POST /api/admin/pois {poi}
+PM -> PM : Bean Validation
+
+group 字段校验
+  PM -> PM : lat ∈ [-90,90]、lng ∈ [-180,180]
+  PM -> PM : price ≥ 0
+  PM -> PM : capacity ∈ [1,200000]（BR-21）
+  PM -> PM : openTime / closeTime 为 HH:mm
+  PM -> PM : closeTime < openTime 时必须 crossMidnight = true
+end
+
+alt 校验失败
+  PM --> UI : 400 PARAM_INVALID {details[]}
+  UI --> A : 字段级红字提示
+else 通过
+  PM -> POI : insert(status = DRAFT)
+  POI --> PM : poiId
+  PM --> UI : 201 {id}
+  UI --> A : 「已创建，状态为草稿，发布后才会进入候选池」
+end
+
+== 3. 发布 / 下架 ==
+A -> UI : 点击「发布」
+UI -> PM : PATCH /api/admin/pois/{id}/status {status:PUBLISHED}
+PM -> POI : status = PUBLISHED
+PM --> UI : 200
+note right of PM
+  只有 PUBLISHED 的 POI 会进入
+  CandidateSelector 的候选池。
+  下架（INACTIVE）不影响已保存行程，
+  因为 activity 冗余存了 poiName
+end note
+
+== 4. 编辑已有 POI ==
+A -> UI : 修改价格
+UI -> PM : PUT /api/admin/pois/{id}
+alt 该 POI 正在被用于生成中的请求
+  note right of PM
+    **本版不加锁**。
+    生成请求读的是查询时刻的快照，
+    中途改价只影响之后的请求。
+    这是一个已知的、可接受的弱一致性
+  end note
+end
+PM -> POI : update
+PM --> UI : 200
+UI --> A : 「已保存」
+
+note over PM
+  **审计要求（本版简化）**
+  只记录 updatedAt 与最后一次操作人，
+  不做完整变更历史。
+  如果答辩被问到「改错了怎么回滚」，
+  诚实的答案是：本版靠数据库备份，
+  完整审计留作后续迭代
+end note
+
+@enduml

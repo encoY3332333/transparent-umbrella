@@ -1,0 +1,72 @@
+@startuml seq-uc02-condition
+' UC-02 出行条件录入与校验 · 顺序图
+' 对应 SRS 3.3.2 与 docs/api.md 2.1
+
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "游客" as T
+boundary "ConditionForm" as UI
+control "ConditionValidator" as CV
+entity "TravelCondition" as TC
+participant "MapServerAdapter" as MSA
+
+== 1. 填写条件 ==
+T -> UI : 选择出发地 / 目的地 / 日期 / 预算 / 人数
+T -> UI : 选择偏好标签、必去、必避
+UI -> UI : 前端仅做必填与格式校验
+
+== 2. 提交服务端校验 ==
+T -> UI : 点击「生成行程」
+UI -> CV : POST /api/conditions/validate
+CV -> CV : Bean Validation（@Valid）
+CV -> CV : 业务规则逐条校验
+
+group 规则校验（BR-04 ~ BR-09）
+  CV -> CV : endDate ≥ startDate（BR-04）
+  CV -> CV : 天数 ∈ [1,15]（BR-05）
+  CV -> CV : 预算 ∈ [500,200000]（BR-06）
+  CV -> CV : 人数 ∈ [1,20]（BR-07）
+  CV -> CV : 标签数 ≤ 6（BR-02）
+  CV -> CV : mustVisit ∩ avoidPOI = ∅（BR-09）
+end
+
+alt 任一规则不通过
+  CV --> UI : 400 {code, message, details[]}
+  UI --> T : 红色标注对应字段 + 中文提示
+else 全部通过
+  == 3. 城市解析 ==
+  CV -> MSA : resolveCity(originCity)
+  MSA --> CV : {lat, lng} 或 null
+  alt 出发地无法解析
+    CV --> UI : 400 CONDITION_CITY_UNRESOLVED
+    UI --> T : 「未找到该城市，请检查输入」
+  else
+    CV -> MSA : resolveCity(destCity)
+    MSA --> CV : {lat, lng}
+    alt 目的地无法解析
+      CV --> UI : 400 CONDITION_CITY_UNRESOLVED
+    else 解析成功
+      CV -> TC : 保存 destLat / destLng
+      CV -> CV : 计算 days、perDay、perPersonPerDay
+      CV -> CV : 生成 warnings（预算偏紧 / 天气风险）
+      CV --> UI : 200 {valid:true, days, resolved, warnings[]}
+      alt warnings 非空
+        UI --> T : 黄色提示条（不阻断流程）
+      end
+      UI -> UI : 进入生成流程（UC-03）
+    end
+  end
+end
+
+note over CV, MSA
+  **降级**：地图服务不可用时
+  城市解析失败 → 返回 CONDITION_CITY_UNRESOLVED，
+  提示用户稍后重试。
+  **不**做「按城市名模糊匹配」的兜底，
+  因为错误的坐标会让后续全部排程失效
+end note
+
+@enduml

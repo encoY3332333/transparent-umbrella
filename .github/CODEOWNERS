@@ -1,0 +1,47 @@
+# CODEOWNERS
+# ------------------------------------------------------------------
+# 作用：向指定路径发起 PR 时，GitHub 会自动请求对应负责人 Review。
+# 注意：这里填写的是 GitHub 用户名（不带 @），请把占位替换为真实账号。
+# 填写完成后，若开启 "Require review from Code Owners"，则必须由
+# 对应负责人 Approve 才能合并。
+# ------------------------------------------------------------------
+
+# 默认：任何改动都需要组长（Maintainer）知会
+*                               @encoY3332333
+
+# ---------------------------- 后端 ----------------------------
+/backend/                       @encoY3332333
+/backend/src/main/java/**/auth/         @【组员2的GitHub名】
+/backend/src/main/java/**/schedule/     @encoY3332333
+/backend/src/main/java/**/budget/       @encoY3332333
+/backend/src/main/java/**/itinerary/    @【组员2的GitHub名】
+/backend/src/main/java/**/poi/          @【组员1的GitHub名】
+/backend/src/main/java/**/strategy/     @encoY3332333
+/backend/src/main/java/**/feedback/     @【组员2的GitHub名】
+
+# ---------------------------- 前端 ----------------------------
+/frontend/                      @【组员1的GitHub名】
+/frontend/src/views/            @【组员1的GitHub名】
+/frontend/src/components/       @【组员1的GitHub名】
+/frontend/src/services/         @【组员2的GitHub名】
+
+# ---------------------------- 测试 ----------------------------
+/tests/                         @【组员2的GitHub名】
+/backend/src/test/              @【组员2的GitHub名】
+/frontend/tests/                @【组员2的GitHub名】
+
+# ---------------------------- 文档 ----------------------------
+/docs/srs/                      @encoY3332333 @【组员1的GitHub名】
+/docs/api.md                    @【组员2的GitHub名】
+/docs/architecture.md           @encoY3332333
+/docs/adr/                      @encoY3332333
+/docs/meetings/                 @【组员1的GitHub名】
+
+# ------------------- 治理文件（仅组长可改） -------------------
+/.github/                       @encoY3332333
+/.github/workflows/             @encoY3332333
+/.github/CODEOWNERS             @encoY3332333
+/CONTRIBUTING.md                @encoY3332333
+/LICENSE                        @encoY3332333
+/.gitignore                     @encoY3332333
+/.env.example                   @encoY3332333

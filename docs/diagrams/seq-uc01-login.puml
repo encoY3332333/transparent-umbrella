@@ -1,0 +1,75 @@
+@startuml seq-uc01-login
+' UC-01 游客登录与偏好建档 · 顺序图
+' 对应 SRS 3.3.1 与 docs/api.md 1.1–1.4
+
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "游客" as T
+boundary "LoginPage" as UI
+control "AuthManager" as AM
+entity "Tourist" as TU
+entity "Preference" as PF
+participant "AuthServerAdapter" as ASA
+
+== 1. 获取验证码 ==
+T -> UI : 输入手机号，点击「获取验证码」
+UI -> AM : POST /api/auth/sms-code {phone}
+AM -> AM : 校验手机号格式
+alt 60 秒内重复请求
+  AM --> UI : 429 SMS_SEND_TOO_FREQUENT
+  UI --> T : 「请 60 秒后再试」
+else 正常
+  AM -> ASA : sendSmsCode(phone)
+  ASA --> AM : {ok, expiresIn: 300}
+  AM --> UI : 200 {expiresIn: 300}
+  UI --> T : 倒计时 60 秒
+end
+
+== 2. 登录 ==
+T -> UI : 输入验证码，提交
+UI -> AM : POST /api/auth/login {phone, smsCode}
+AM -> ASA : verify(phone, smsCode)
+alt 验证码错误 / 过期
+  ASA --> AM : fail
+  AM --> UI : 400 SMS_CODE_INVALID / SMS_CODE_EXPIRED
+  UI --> T : 「验证码错误，请重新输入」
+else 验证通过
+  ASA --> AM : ok
+  AM -> TU : findByPhone(phone)
+  alt 首次登录
+    AM -> TU : create(phone)
+    TU --> AM : tourist(id=1001)
+    AM -> PF : createDefault(touristId)
+  else 已注册
+    TU --> AM : tourist(id, hasPreference)
+  end
+  AM -> AM : 签发 JWT（24h，ADR-001）
+  AM --> UI : 200 {accessToken, expiresIn, tourist}
+  UI -> UI : token 存 localStorage
+  alt hasPreference == false
+    UI --> T : 弹出偏好设置浮层（S1）
+  else
+    UI --> T : 跳转至行程规划页
+  end
+end
+
+== 3. 保存偏好 ==
+T -> UI : 选择标签 / 同行构成 / 节奏 / 档次，保存
+UI -> UI : 本地校验：标签 ≤ 6 个（BR-02）
+UI -> AM : PUT /api/tourists/me/preference
+AM -> PF : save(touristId, preference)
+PF --> AM : ok
+AM --> UI : 200 PreferenceDTO
+UI --> T : 「偏好已保存」
+
+note over AM, ASA
+  **降级**：认证服务不可用时返回
+  AUTH_SERVICE_UNAVAILABLE(503)。
+  已登录用户可用缓存 token 继续，
+  未登录用户禁止进入（architecture 6.2）
+end note
+
+@enduml

@@ -1,0 +1,108 @@
+@startuml seq-uc03-generate
+' UC-03 行程自动生成 · 顺序图（核心链路）
+' 对应 SRS 3.3.3、docs/architecture.md 3.1、docs/api.md 3.1
+
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "游客" as T
+boundary "ResultPage" as UI
+control "PlanManager" as PM
+participant "CandidateSelector" as CS
+participant "CrowdIndexCalculator" as CIC
+participant "StrategyEngine" as SE
+participant "ScoreCalculator" as SC
+participant "FeasibilityChecker" as FC
+participant "BudgetIterator" as BI
+entity "Itinerary" as IT
+participant "外部系统\n(天气/地图/人流/活动/票务)" as EXT
+
+T -> UI : 点击「生成行程」（条件已校验通过）
+UI --> T : 展示 5 步进度骨架屏
+UI -> PM : POST /api/itineraries/generate {condition, variantCount}
+
+PM -> PM : 二次校验条件（不信任前端）
+PM -> PM : 启动外部调用计数器（上限 60，BR-10）
+
+== 步骤 1：候选筛选 ==
+PM -> CS : select(condition)
+CS -> CS : 查同城 PUBLISHED POI
+CS -> CS : 按偏好标签 / 必去 / 必避 过滤
+CS -> CS : 规模收敛至 [20, 300]
+CS --> PM : List<POI>
+alt 候选数 < 1 天所需
+  PM --> UI : 422 PLAN_NO_CANDIDATE
+  UI --> T : 「该目的地可用景点不足，请调整条件」
+end
+
+== 步骤 2：拥挤度 ==
+PM -> CIC : compute(poiIds, dateRange)
+CIC -> EXT : 批量取历史同期游览量
+EXT --> CIC : {poiId, date, volume}[]
+CIC -> CIC : CrowdIndex = min(100, round(100×vol/capacity))
+CIC --> PM : Map<(poiId,date), CrowdIndex>
+
+== 步骤 3：活动 ==
+PM -> EXT : getEvents(city, dateRange)
+EXT --> PM : events[]
+PM -> PM : 与偏好标签匹配，追加为候选（category=EVENT）
+
+== 步骤 4：通勤矩阵 ==
+PM -> EXT : getTravelMatrix(poiIds)  [缓存 1h]
+EXT --> PM : N×N 时长矩阵
+
+== 步骤 5：天气 ==
+PM -> EXT : getForecast(city, dateRange)
+EXT --> PM : 逐日天气 + 风险标记
+
+PM -> PM : 检查计数器 ≤ 60（实际 8~12 次）
+
+== 步骤 6：排程（每套方案一次）==
+loop variant in 1..variantCount
+  PM -> SE : plan(condition, pois, context)
+  SE -> SC : computeScore(p, d) 逐 POI 逐日
+  SC --> SE : 分数明细（5 项分项 + 加权总分）
+  SE -> SE : 必去 POI 锁定预置
+  SE -> SE : 按天贪心装箱，预留用餐/休息
+  SE -> FC : validate(itinerary)
+  alt 不可行（必去未排入 / 时间冲突）
+    FC --> SE : {valid:false, violations[]}
+    SE -> SE : 宽松化重试一次（放宽通勤阈值）
+  else 可行
+    FC --> SE : {valid:true}
+  end
+  alt 总费用 > 预算
+    SE -> BI : iterate(itinerary, budget)
+    BI -> BI : 按性价比最低优先替换，最多 N 轮
+    alt 仍超预算
+      BI --> SE : 仍超支，标记 BUDGET_TIGHT
+    end
+  end
+  SE --> PM : Itinerary（含 reasons[]）
+end
+
+== 步骤 7：落库与返回 ==
+PM -> IT : save(status=PROPOSED, version=1)  [@Transactional]
+IT --> PM : itineraryId
+PM --> UI : 200 {itineraries[], degraded[], durationMs}
+UI -> UI : 结果页渲染（UC-04）
+
+note over PM, EXT
+  **降级**（architecture 6.2）：
+  天气挂 → 天气字段 UNKNOWN，取消天气惩罚
+  地图挂 → 通勤按直线距离×1.5 估算
+  人流挂 → CrowdIndex = UNKNOWN，取消拥挤惩罚
+  活动挂 → 跳过活动插入
+  票务/酒店挂 → 按目的地均价估算
+  任一降级都会在响应 data.degraded[] 中列出
+end note
+
+note over PM
+  **性能要求**：P95 ≤ 10s（NFR-P1）
+  实测算法本身 < 1s，其余为外部调用耗时
+  超时时**不**自动重试整套生成（外部调用会翻倍）
+end note
+
+@enduml
