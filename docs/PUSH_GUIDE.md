@@ -76,7 +76,7 @@ git push origin main
 # 推送之后必须做的 8 件事（组长操作，不能代劳）
 
 这些是 GitHub **网页设置**，任何工具都无法代替你点。完整操作步骤见
-[`.github/BRANCH_PROTECTION.md`](.github/BRANCH_PROTECTION.md)。
+[`.github/BRANCH_PROTECTION.md`](../.github/BRANCH_PROTECTION.md)。
 
 | # | 事项 | 位置 | 说明 |
 |---|---|---|---|
