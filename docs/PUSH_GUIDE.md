@@ -1,28 +1,37 @@
-> 这份文件的用途：我（AI）已经把仓库内容全部准备好并在本地完成提交，但当前环境**无法访问 github.com 完成推送**（详见文末「为什么我推不上去」）。请按下面的步骤把提交推上去。可选方案从「最省事」到「最可控」排列，**选一个就行**。
+> 这份文件的用途：仓库内容已全部准备好并在本地完成提交（3 个 commit）。**只剩「推送 + GitHub 网页配置」两步需要人来做**——认证与网页设置无法由工具代劳。
+>
+> **重要前提已处理**：本机 git 默认的 `schannel` SSL 后端连接 GitHub 会报 `server closed abruptly`，已全局改为 `openssl`（`git config --global http.sslBackend openssl`）。若换机器操作遇到同样报错，执行这一条命令即可。
 
 ---
 
-# 方案 A：用 GitHub Desktop 推送（最省事，推荐）
+# 方案 B：用 VS Code 推送（本机已就绪，推荐）
+
+VS Code 已打开仓库窗口（识别到 66 个文件）。只需三步：
+
+**第 1 步：登录 GitHub（只需一次）**
+左下角人形图标 → **使用 GitHub 登录** → 浏览器会弹出授权页 → 点 **Authorize Visual Studio Code** → 回到 VS Code。
+
+**第 2 步：推送**
+左侧「源代码管理」图标（`Ctrl+Shift+G`）→ 三个点 `...` 菜单 → **拉取、推送** → **推送**（或直接点状态栏底部的同步图标）。
+
+**第 3 步：验证**
+浏览器打开 https://github.com/encoY3332333/transparent-umbrella ，应看到 66 个文件与 3 条 commit 记录。
+
+> 若第 2 步报 `could not read Username`：说明第 1 步未成功。VS Code 的 Git 认证走凭据管理器，需先在 VS Code 内完成 GitHub 登录，而不是在网页上登录。
+
+---
+
+# 方案 A：用 GitHub Desktop 推送
 
 前提：你的电脑装了 GitHub Desktop，且已登录 `encoY3332333` 账号。
 
 1. 打开 GitHub Desktop → 菜单 **File → Add local repository**
 2. 选择路径：`D:\软件工程\transparent-umbrella`
 3. 如果提示「这不是一个 Git 仓库」，点 **create a repository** 时把路径指向同一目录即可（不要勾选初始化 README）
-4. 左侧会显示 1 个待推送的提交：`chore(repo): bootstrap project skeleton and collaboration setup`
+4. 左侧会显示待推送的 commit：`chore(repo): bootstrap project skeleton and collaboration setup`
 5. 右上角点 **Push origin**
 
 推送完成后到 https://github.com/encoY3332333/transparent-umbrella 确认文件已出现。
-
----
-
-# 方案 B：用 VS Code 推送
-
-1. VS Code → **文件 → 打开文件夹** → `D:\软件工程\transparent-umbrella`
-2. 左侧「源代码管理」图标（Ctrl+Shift+G）会显示 1 个未推送的提交
-3. 点 **同步更改**（或 **推送**），按提示用浏览器登录 GitHub 授权
-
-VS Code 会用 GitHub 账号的 OAuth 完成认证，不需要手动生成 Token。
 
 ---
 
@@ -97,12 +106,12 @@ git push origin main
 
 | 占位符 | 出现次数 | 替换为 |
 |---|---|---|
-| `【组长】` | 49 | 组长真实姓名 |
-| `【组员1】` | 34 | 组员1 真实姓名 |
-| `【组员2】` | 31 | 组员2 真实姓名 |
-| `【组员1的GitHub名】` / `【组员2的GitHub名】` | 2 | GitHub 用户名 |
-| `【GitHub用户名】` | 3 | 你自己的 GitHub 用户名（在 `docs/contributions/_template.md` 中） |
-| `【姓名】` `【学号】` | 2 | 同上 |
+| `【组长】` | 50 | 组长真实姓名 |
+| `【组员1】` | 35 | 组员1 真实姓名 |
+| `【组员2】` | 32 | 组员2 真实姓名 |
+| `【组员1的GitHub名】` / `【组员2的GitHub名】` | 各 2 | GitHub 用户名 |
+| `【GitHub用户名】` | 4 | 你自己的 GitHub 用户名（在 `docs/contributions/_template.md` 中） |
+| `【姓名】` `【学号】` | 各 2 | 同上 |
 
 **注意**：`docs/contributions/_template.md` 里的 `【方案内容】`「【具体事件】」等是**模板引导语**，不是占位符，不要替换。
 
@@ -110,23 +119,45 @@ git push origin main
 
 ---
 
-# 为什么我推不上去
+# 故障排查：`schannel: server closed abruptly`
 
-我做了三轮排查：
-
-| 尝试 | 结果 |
-|---|---|
-| `git ls-remote origin`（直连） | `schannel: server closed abruptly` —— TLS 层被中断 |
-| 走环境里的 `HTTP_PROXY=http://127.0.0.1:25099` | `CONNECT tunnel failed, response 502` —— 代理不放行 git 协议 |
-| 绕过代理直连 | `Could not connect to github.com:443 after 21096 ms` —— 超时 |
-| `api.github.com` 只读访问 | **200 OK** —— 说明能读到，但推送所需的认证通道走不通 |
-| 检查 `GITHUB_TOKEN` / `GH_TOKEN` 环境变量 | **不存在** |
-
-结论：这个沙箱环境对 GitHub 只有只读的 HTTPS API 通道，**没有 git 的认证推送通道**，也没有你的凭据。所以我能做到的最远处是「本地 commit 完成 + 生成 bundle」，最后一步必须由你在本地完成。
-
-本地提交已经就绪，你不需要重新生成任何文件：
+**症状**：`git push` / `git ls-remote` / VS Code 的同步按钮报
 
 ```
+fatal: unable to access 'https://github.com/...': schannel: server closed abruptly (missing close_notify)
+```
+
+**原因**：Windows 自带的 `schannel` SSL 后端与 GitHub 的 TLS 握手在该网络环境下会被中断。网络本身是通的（`ping`/`curl` 正常），只是 git 走了 schannel 这条路径。
+
+**解决**：切换为 OpenSSL 后端。
+
+```bash
+git config --global http.sslBackend openssl
+```
+
+**验证**：
+
+```bash
+cd D:\软件工程\transparent-umbrella
+git ls-remote origin
+# 应输出 f33eca78...  refs/heads/main
+```
+
+本机已执行过这条命令。**组员在新机器上 clone 时如果遇到同样报错，也执行这一条。**
+
+> 这个改动是全局的（`~/.gitconfig`），对本机所有仓库生效。如果之后某个企业内网仓库需要 schannel（例如依赖 Windows 证书存储做客户端证书认证），把 `openssl` 改回 `schannel` 即可，或对该仓库单独设置 `git config http.sslBackend schannel`。
+
+---
+
+# 本地提交现状
+
+推送前，本地 `main` 领先 `origin/main` 三个提交：
+
+```
+78502d7  docs: fix relative link in push guide
+83615d0  docs: add push guide for first-time repository setup
 4ce9be0  chore(repo): bootstrap project skeleton and collaboration setup
-f33eca7  Initial commit
+f33eca7  Initial commit          ← origin/main 当前指向这里
 ```
+
+推送后仓库将包含 66 个文件。若网络不可用，可用 `D:\软件工程\transparent-umbrella-骨架.bundle`（含完整提交历史）拷到其他机器：`git clone <bundle> repo && cd repo && git remote set-url origin <远程地址> && git push origin main`。
