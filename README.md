@@ -112,6 +112,7 @@ transparent-umbrella/
 │   ├── contributions/           个人工程贡献说明书模板
 │   ├── guides/                  协作规范、需求获取问卷与访谈提纲
 │   ├── release-notes/           版本发布说明
+│   ├── PUSH_GUIDE.md            首次推送与仓库配置的操作指引
 │   └── 附件5_需求清单与Issue拆分表.xlsx
 ├── backend/                     Spring Boot 3 服务端（Issue #1 创建）
 ├── frontend/                    Vue 3 + Vite 前端（Issue #1 创建）
