@@ -1,0 +1,50 @@
+@startuml ui-flow
+' SmartTrip 界面跳转关系图（图 14）
+' 对应 SRS 第 5 章
+
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam rectangle {
+  BackgroundColor #F8FAFC
+  BorderColor #64748B
+  RoundCorner 12
+}
+
+title SmartTrip 界面跳转关系（游客端 S1–S6 / 管理端 S7–S8）
+
+rectangle "S1 登录页\n/login" as S1
+rectangle "S2 首页\n/" as S2
+rectangle "S3 条件录入页\n/plan/new\n出发地·目的地·时间·预算·偏好" as S3
+rectangle "S4 生成中\n（骨架屏，无独立路由）" as S4
+rectangle "S5 行程结果页\n/itinerary/{id}\n时间轴·地图·预算·推荐理由" as S5
+rectangle "S6 调整模式\n/itinerary/{id}/edit\n拖拽·锁定必去·单项替换" as S6
+rectangle "分享面板\n/share/{token}（只读）" as SHARE
+rectangle "S7 管理后台登录\n/admin/login" as S7
+rectangle "S8 POI 与策略管理\n/admin/poi\n/admin/strategy" as S8
+
+S1 --> S2 : 登录成功 / 已有 token
+S2 --> S3 : 点击「开始规划」
+S3 --> S4 : 提交条件校验通过
+S4 --> S5 : 200 返回 1–3 套方案
+S4 --> S3 : 422 无可用方案 / 校验失败
+S5 --> S6 : 点击「调整」
+S6 --> S5 : 保存调整（version + 1）
+S5 --> SHARE : 点击「分享」
+SHARE --> S5 : 访问者打开链接（只读）
+S5 --> S2 : 返回首页
+S7 --> S8 : 管理员登录成功
+
+note right of S4
+  **S4 不做独立路由**
+  生成耗时 5~10 秒，
+  用同一页面的骨架屏承接，
+  避免用户刷新后落到空白页
+end note
+
+note bottom of SHARE
+  **分享页与结果页复用同一套组件**，
+  区别仅在于隐藏编辑类按钮
+  （ADR-005：调整在副本上执行）
+end note
+
+@enduml
