@@ -64,7 +64,7 @@ git branch -d feature/12-itinerary-schedule
 
 格式：`<type>(<scope>): <subject>`
 
-**type 限定 8 种**：
+**type 限定 11 种**（与 `.github/workflows/ci.yml` 的正则保持一致，改一处必须同时改另一处）：
 
 | type | 含义 |
 |---|---|
@@ -75,7 +75,10 @@ git branch -d feature/12-itinerary-schedule
 | `refactor` | 重构（非功能、非修复） |
 | `perf` | 性能优化 |
 | `style` | 格式调整（不影响逻辑） |
-| `chore` | 构建 / 依赖 / 工具 |
+| `chore` | 杂务（脚手架、脚本、依赖） |
+| `build` | 构建系统与依赖声明（如 `pyproject.toml`、Dockerfile） |
+| `ci` | CI 配置与流水线 |
+| `revert` | 回滚先前的提交 |
 
 **规则**：
 
