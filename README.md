@@ -36,14 +36,15 @@ SmartTrip 把这些重复劳动自动化。用户只需输入少量条件，系�
 
 | 里程碑 | 内容 | 状态 |
 |---|---|---|
-| 文档基线 | SRS v1.0、架构说明、接口清单、6 份 ADR、15 张 UML 图 | ✅ 已冻结（`v0.0.1`） |
+| 文档基线 | SRS v1.0（14 张 UML 图已嵌入）、架构说明、接口清单、6 份 ADR | ✅ 已冻结（`v0.0.1`） |
 | 工程配置 | CI、Issue/PR 模板、CODEOWNERS、分支规范 | ✅ 已生效，CI 绿灯 |
 | 任务拆分 | [14 个 Issue](https://github.com/encoY3332333/transparent-umbrella/issues?q=is%3Aissue) 分入 5 个 Milestone，共 92 人时 | ✅ 已创建 |
 | 代码 | `backend/` 与 `frontend/` 脚手架 | ⬜ 从 [Issue #1](https://github.com/encoY3332333/transparent-umbrella/issues/1) 开始 |
 
 - 版本发布：[`v0.0.1`](https://github.com/encoY3332333/transparent-umbrella/releases/tag/v0.0.1)（pre-release，仅文档与配置）
 - 任务看板：[Issues](https://github.com/encoY3332333/transparent-umbrella/issues) · [Milestones](https://github.com/encoY3332333/transparent-umbrella/milestones)
-- 会议记录：[`docs/meetings/`](./docs/meetings/) · 架构决策：[`docs/adr/`](./docs/adr/)
+- 考核项对照：[`docs/assessment-checklist.md`](./docs/assessment-checklist.md)（A1–A8 / B1–B7 逐项自查）
+- 会议记录：[`docs/meetings/`](./docs/meetings/) · 进展报告：[`docs/reports/`](./docs/reports/) · 架构决策：[`docs/adr/`](./docs/adr/)
 
 ## 技术栈
 
