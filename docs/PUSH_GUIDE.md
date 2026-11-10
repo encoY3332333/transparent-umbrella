@@ -285,3 +285,47 @@ fe3d0c7  build(ci): replace Java and Node pipelines with a Python toolchain
 | `Permission denied` / `403` | 未被邀请为 Collaborator，或登录了错误的账号 |
 
 
+
+---
+
+# 备选通道：git 推送彻底不通时，走 GitHub Data API
+
+## 什么时候用
+
+`git push` 报 `Recv failure: Connection was reset` / `TLS connect error: unexpected eof`，
+但 `curl https://api.github.com` 仍然 200 —— 说明只有 `github.com:443` 的 git 通道被中断，
+REST API 是通的。此时不必等网络恢复。
+
+## 原理
+
+`git push` 本质是「上传对象 + 移动引用」。Data API 把这两步拆成了可单独调用的接口：
+
+| 步骤 | 接口 |
+|---|---|
+| 上传文件内容 | `POST /repos/{owner}/{repo}/git/blobs` |
+| 组装目录树 | `POST /repos/{owner}/{repo}/git/trees` |
+| 创建提交 | `POST /repos/{owner}/{repo}/git/commits` |
+| 建/移动分支 | `POST /repos/{owner}/{repo}/git/refs` · `PATCH .../git/refs/heads/{branch}` |
+| 开 PR | `POST /repos/{owner}/{repo}/pulls` |
+| 合并 PR | `PUT /repos/{owner}/{repo}/pulls/{number}/merge` |
+
+blob 的 SHA 是内容哈希，本地 `git cat-file blob <sha>` 拿到的内容算出来的 SHA 与本地一致，
+所以可以直接复用本地对象树，不需要重算。
+
+## 三个必须注意的点
+
+1. **取文件内容用 `git show <rev>:<path>`**。写成 `git show <rev>` 拿到的是提交对象，
+   会把提交信息当正文写进文件——本项目 PR #16 就这么翻车过，CI 报出上百条 `invalid-syntax`。
+2. **合并 PR 是 PUT，不是 POST**。用 POST 会拿到 404，看起来像没权限。
+3. **本地分支建不出来时**（某些沙箱环境禁止在 `.git/refs` 下新建目录），
+   远端分支可以照建；本地只是少一个引用，不影响远端结果。
+
+## 合并之后
+
+本地 `main` 会落后于远端一个合并提交（合并提交只在远端生成）。等网络恢复后：
+
+```bash
+git fetch origin && git reset --hard origin/main
+```
+
+> ⚠️ `reset --hard` 会丢弃未提交改动，执行前先 `git status` 确认工作区干净。
