@@ -156,14 +156,26 @@ jobs:
         run: |
           BASE="origin/${{ github.base_ref }}"
           git fetch origin "${{ github.base_ref }}" --depth=1 || true
-          COMMITS=$(git log --no-merges --format=%s "$BASE..HEAD" 2>/dev/null || git log --no-merges --format=%s -20)
+          if ! git rev-parse --verify --quiet "$BASE" > /dev/null; then
+            echo "::error::取不到基线分支 $BASE，无法校验提交信息"
+            exit 1
+          fi
+          # 只校验本 PR 新增的提交；范围为空说明没有新提交，直接通过。
+          # 不要在这里回退到「最近 20 条」——那会把历史提交（含仓库初始化时的
+          # Initial commit）拉进来，让所有人都卡在一个改不掉的失败上。
+          COMMITS=$(git log --no-merges --format=%s "$BASE..HEAD")
+          if [ -z "$COMMITS" ]; then
+            echo "本 PR 没有新增提交，跳过提交信息校验"
+            exit 0
+          fi
           echo "本 PR 的提交信息："
           echo "$COMMITS"
+          ALLOWED="feat|fix|docs|test|refactor|perf|style|chore|build|ci|revert"
           FAIL=0
           while IFS= read -r msg; do
             [ -z "$msg" ] && continue
-            if [[ ! "$msg" =~ ^(feat|fix|docs|test|refactor|style|chore|perf)(\([a-z0-9-]+\))?:\ .{3,} ]]; then
-              echo "::error::提交信息不符合 Conventional Commits：'$msg'"
+            if [[ ! "$msg" =~ ^($ALLOWED)(\([a-z0-9-]+\))?:\ .{3,} ]]; then
+              echo "::error::提交信息不符合 Conventional Commits：'$msg'（允许的 type：$ALLOWED）"
               FAIL=1
             fi
           done <<< "$COMMITS"
