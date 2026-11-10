@@ -18,8 +18,8 @@
 - [ ] 后端：`CrowdIndexCalculator` 实现公式 `min(100, round(100 * HistVolume / Capacity))`
 - [ ] 后端：人流量服务不可用时降级——`CrowdIndex` 标记为 `UNKNOWN`，排程时不再施加拥挤度惩罚
 - [ ] 后端：缓存历史人流量（按 poiId + 日期，TTL 24h），避免重复计费
-- [ ] 测试：`CrowdIndexCalculatorTest` 覆盖 0 / 50 / 80 / 100 / 超载（>100 截断）/ 承载量为 0 六个场景
-- [ ] 测试：`CandidateSelectorTest` 覆盖必去命中、必避排除、候选不足放宽、数据不足报错
+- [ ] 测试：`tests/test_crowd_index.py` 覆盖 0 / 50 / 80 / 100 / 超载（>100 截断）/ 承载量为 0 六个场景
+- [ ] 测试：`tests/test_candidate_selector.py` 覆盖必去命中、必避排除、候选不足放宽、数据不足报错
 
 ## 验收标准 / Acceptance Criteria
 

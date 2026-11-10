@@ -68,6 +68,6 @@
 - **`Settings` 用 `pydantic-settings` 的 `BaseSettings`**，字段名与 `.env.example` 完全一致（大小写不敏感）。这样「`.env.example` 里有的都能读到、读到的都在 `.env.example` 里」这条验收标准可以靠肉眼核对
 - **SQLite 的坑**：`create_engine` 需要 `connect_args={"check_same_thread": False}`；测试用 `sqlite+pysqlite:///:memory:` 时，每个连接是独立的内存库，必须用 `StaticPool` 共享，否则 `alembic upgrade head` 建的表在测试里查不到
 - **`migrations/env.py` 不要从 `alembic.ini` 读 URL**。从 `app.core.config.Settings` 读，保证开发/CI/演示三处只有一份配置来源
-- **前端资源必须本地化**。HTMX 与 Alpine.js 各约 40KB，下载到 `app/static/vendor/` 入库。演示环境可能没有外网，引用 CDN 会在答辩时白屏
+- **页面静态资源必须本地化**。HTMX 与 Alpine.js 各约 40KB，下载到 `app/static/vendor/` 入库。演示环境可能没有外网，引用 CDN 会在答辩时白屏
 - **CI 的 `templates` job 依赖本 Issue 产出 `scripts/check-templates.py` 与 `app/templates/` 目录**，两者缺一个都会让 CI 报「找不到路径」
 - 若 `pip install` 在 CI 上偶发超时，可在 workflow 加 `pip install --retries 5 --timeout 60`，不要用 `--no-cache-dir`（会让后续步骤变慢）

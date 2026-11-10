@@ -42,4 +42,4 @@ Closes #
 
 ## 评审提示
 
-<!-- 希望评审者重点关注哪部分？例：策略引擎的权重归一化逻辑（StrategyEngine#normalizeWeights） -->
+<!-- 希望评审者重点关注哪部分？例：策略引擎的权重归一化逻辑（`app/engine/strategy.py` 的 `normalize_weights()`） -->
