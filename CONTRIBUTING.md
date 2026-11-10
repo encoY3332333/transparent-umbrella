@@ -30,9 +30,9 @@ git pull origin main
 git switch -c feature/12-itinerary-schedule
 
 # 2. 小步提交：一个逻辑变更一次提交
-git add backend/src/main/java/.../StrategyEngine.java
+git add backend/app/engine/schedule.py
 git commit -m "feat(schedule): add greedy packing for daily activities"
-git add backend/src/main/java/.../BudgetCalculator.java
+git add backend/app/services/budget.py
 git commit -m "feat(budget): sum cost by four categories"
 
 # 3. 推送并发起 PR（描述中写 Closes #12）
