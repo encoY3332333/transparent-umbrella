@@ -21,7 +21,7 @@ UI -> UI : 前端仅做必填与格式校验
 == 2. 提交服务端校验 ==
 T -> UI : 点击「生成行程」
 UI -> CV : POST /api/conditions/validate
-CV -> CV : Bean Validation（@Valid）
+CV -> CV : Pydantic v2 字段校验
 CV -> CV : 业务规则逐条校验
 
 group 规则校验（BR-04 ~ BR-09）

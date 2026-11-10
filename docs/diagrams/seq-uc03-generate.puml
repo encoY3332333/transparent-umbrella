@@ -84,7 +84,7 @@ loop variant in 1..variantCount
 end
 
 == 步骤 7：落库与返回 ==
-PM -> IT : save(status=PROPOSED, version=1)  [@Transactional]
+PM -> IT : save(status=PROPOSED, version=1)  [session.begin()]
 IT --> PM : itineraryId
 PM --> UI : 200 {itineraries[], degraded[], durationMs}
 UI -> UI : 结果页渲染（UC-04）

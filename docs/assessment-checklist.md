@@ -45,13 +45,13 @@
 
 | 要求 | 现状 | 证据 |
 |---|---|---|
-| 分层与模块划分 | 三层架构 + 6 个后端包 + 5 条分层约束 | `docs/architecture.md` 第 1–2 章 |
+| 分层与模块划分 | 单体 + 5 层（api/services/engine/adapters/models）+ 5 条分层约束 | `docs/architecture.md` 第 1–2 章 |
 | 关键数据流 | 行程生成主链路（含外部调用预算 8–12 次）、调整链路 | `docs/architecture.md` 第 3 章 |
 | 数据模型 | 8 张核心表、ER 关系、约束 | `docs/architecture.md` 第 4 章 + SRS 附录 A |
-| 关键技术决策有据可依 | 6 份 ADR，含**被否决的方案与理由** | `docs/adr/ADR-001`–`ADR-006` |
-| 设计图与文字一致 | 类图类名 = 规划的 Java 包结构 | `docs/diagrams/class-analysis.puml` |
+| 关键技术决策有据可依 | 7 份 ADR，含**被否决的方案与理由** | `docs/adr/ADR-001`–`ADR-007` |
+| 设计图与文字一致 | 类图类名 = Python 包结构中的类名 | `docs/diagrams/class-analysis.puml` |
 
-**答辩最可能被问的**：为什么用贪心而不用整数规划（ADR-003）、拥挤度为什么不用机器学习（ADR-006）。这两份 ADR 里写了对比表，背下来。
+**答辩最可能被问的**：为什么用贪心而不用整数规划（ADR-003）、拥挤度为什么不用机器学习（ADR-006）、为什么技术栈从 Java 换成 Python（ADR-007）。这三份 ADR 里写了对比表，背下来。
 
 ### A3 功能与质量（16 分）⚪ 未开始
 
@@ -84,11 +84,11 @@ PR 模板、评审 6 维度、CODEOWNERS 都已就位，但**没有 PR 就没有
 
 | 要求 | 现状 | 证据 |
 |---|---|---|
-| CI 可运行 | 4 个 job，两次成功运行 | Actions 面板 `9ee6fdf`、`05cd719` |
-| 覆盖率门槛 | ⬜ 未配置（无代码，JaCoCo 未介入） | Issue #14 |
+| CI 可运行 | 4 个 job，多次成功运行 | Actions 面板 |
+| 覆盖率门槛 | ⬜ 未配置（无代码，pytest-cov 未介入） | Issue #14 |
 | 测试用例 | ⚪ 0 个 | — |
 
-CI 目前对 backend/frontend 是「检测到没有 `pom.xml`/`package.json` 就跳过」，这是**故意设计**的，
+CI 目前对 `backend` / `templates` 是「检测到没有 `pyproject.toml` / `app/templates/` 就跳过」，这是**故意设计**的，
 让文档类 PR 能先合进来。Issue #1 落地后会自动转为真实执行，不需要改 CI。
 
 ### A7 文档与治理（4 分）🟡
@@ -145,7 +145,7 @@ Alpha 版本发布与答辩材料属后续阶段。
 | P0 | 邀请 2 名组员为 Collaborator | 仓库所有者 | 需组员 GitHub 账号 |
 | P0 | 14 个 Issue 指派 Assignee | 组长 | 需三人账号对应关系 |
 | P1 | 替换 120 处占位符（姓名/学号/GitHub 名） | 组长，一个 PR 统一改 | 需真实信息 |
-| P1 | Issue #1 脚手架落地（前后端工程初始化） | 组员 | 未开始 |
+| P1 | Issue #1 脚手架落地（Python 应用工程初始化） | 组员 | 未开始 |
 | P2 | 第 3、4 次组会并补会议纪要 | 全组 | 要求 ≥4 次，现 2 次 |
 | P2 | 个人贡献说明书填写（3 份） | 每人 | 目前只有 `_template.md` |
 | P3 | README 启动步骤请组外同学实测并留证 | 组员 | 需先有代码 |

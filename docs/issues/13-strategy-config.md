@@ -12,15 +12,15 @@
 
 ## 任务清单 / Tasks
 
-- [ ] 后端：`StrategyParameter` 实体 + 版本表，版本号自增，历史版本永久保留（BR-24）
+- [ ] 后端：`strategy_parameter` 模型 + 版本表，版本号自增，历史版本永久保留（BR-24）
 - [ ] 后端：`GET/PUT /api/admin/strategy`
-- [ ] 后端：`StrategyManager.checkSum()`——五项权重之和为 1（允许 ±0.01），每项 ∈ [0,1]（BR-23）
+- [ ] 后端：`StrategyService.validate_weights()`——五项权重之和为 1（允许 ±0.01），每项 ∈ [0,1]（BR-23）
 - [ ] 后端：一键归一化（把当前输入按比例缩放到和为 1）
-- [ ] 后端：`StrategyEngine.reload()` 热加载，用 volatile 引用或版本号比对实现
+- [ ] 后端：不做进程内热加载。`PlanService` 每次生成时从 DB 读当前生效版本号，带 60 秒缓存（`cachetools.TTLCache`）；参数变更时主动失效缓存
 - [ ] 后端：`POST /api/admin/strategy/rollback/{version}` 回滚
 - [ ] 后端：某项权重被设为 0 且对应兜底规则关闭时，返回警告并要求二次确认
-- [ ] 前端：`AdminStrategyView.vue`——五项滑块（实时显示和是否为 1）+ 阈值输入 + 版本列表 + 回滚按钮
-- [ ] 测试：`StrategyManagerTest` 覆盖和为 1 校验、越界校验、归一化、版本自增、回滚
+- [ ] 页面：`templates/admin/strategy.html`——五项滑块（Alpine.js 实时显示和是否为 1）+ 阈值输入 + 版本列表 + 回滚按钮
+- [ ] 测试：`tests/services/test_strategy_service.py` 覆盖和为 1 校验、越界校验、归一化、版本自增、回滚
 
 ## 验收标准 / Acceptance Criteria
 

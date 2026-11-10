@@ -16,7 +16,7 @@ participant "MapServerAdapter" as MSA
 == 1. 查询 POI ==
 A -> UI : 输入城市 / 关键字 / 状态
 UI -> PM : GET /api/admin/pois?city=&keyword=&status=&page=
-PM -> POI : 分页查询（MyBatis-Plus 条件构造）
+PM -> POI : 分页查询（SQLAlchemy select + 过滤条件）
 POI --> PM : Page<POI>
 PM --> UI : 200 分页列表
 UI --> A : 表格展示（支持按更新时间排序）
@@ -26,7 +26,7 @@ A -> UI : 点击「新增」，填写名称/城市/类别/坐标/时间/价格/�
 UI -> MSA : 地址转坐标（辅助填表，失败可手填）
 MSA --> UI : {lat, lng}
 UI -> PM : POST /api/admin/pois {poi}
-PM -> PM : Bean Validation
+PM -> PM : Pydantic 字段校验
 
 group 字段校验
   PM -> PM : lat ∈ [-90,90]、lng ∈ [-180,180]

@@ -14,11 +14,11 @@
 
 - [ ] 后端：`POST /api/itineraries/{id}/save` 保存并命名（默认「目的地 + 起止日期」）
 - [ ] 后端：`POST /api/itineraries/{id}/share` 生成短链（带签名 token，TTL 7 天）
-- [ ] 后端：`GET /api/share/{token}` 只读访问接口，**必须使用脱敏 DTO**（剔除手机号、真实姓名）
+- [ ] 后端：`GET /api/share/{token}` 只读访问接口，**必须使用独立的 `ShareItineraryOut` schema**（不含手机号、真实姓名等字段，不从 `Tourist` 模型直接序列化）
 - [ ] 后端：`ExportService.toICS()` 生成 .ics，正确处理跨天活动与时区
 - [ ] 后端：单账号保存上限 50 份（BR-18），超出时提示删除最早的一份
 - [ ] 前端：分享面板（复制链接、二维码、导出日历三个 tab）
-- [ ] 前端：`MyItinerariesView.vue` 我的行程列表（缩略图 + 名称 + 日期 + 状态）
+- [ ] 页面：`templates/itinerary/list.html` 我的行程列表（缩略图 + 名称 + 日期 + 状态）
 - [ ] 测试：`ShareServiceTest` 覆盖链接生成、过期校验、签名篡改拒绝、脱敏字段
 - [ ] 测试：`IcsExportTest` 覆盖单日活动、跨天活动、多时段活动
 

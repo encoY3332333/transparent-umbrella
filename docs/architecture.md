@@ -7,103 +7,112 @@
 
 ## 1. 总体架构
 
-系统采用**前后端分离的三层架构**：
+系统采用**单体应用 + 服务端渲染**的分层架构。前后端不再分离部署，同一个 FastAPI 进程既返回 HTML 页面，也提供 `/api/**` 的 JSON 接口。
 
 | 层 | 职责 | 技术选型 |
 |---|---|---|
-| 表现层 | 页面渲染、用户交互、表单校验 | Vue 3 + Vite + TypeScript + Pinia |
-| 业务层 | 业务编排、权限校验、排程算法 | Spring Boot 3.2 + Java 17 |
-| 数据层 | 持久化、事务、缓存 | MySQL 8 + MyBatis-Plus + Caffeine |
+| 表现层 | 页面渲染、局部刷新、表单校验 | Jinja2 模板 + HTMX + Alpine.js |
+| 应用层 | 路由、参数校验、鉴权、响应包装 | FastAPI + Pydantic v2 |
+| 业务层 | 业务编排、事务、排程算法 | Python 3.11（services / engine） |
+| 数据层 | 持久化、迁移、缓存 | SQLAlchemy 2.0 + Alembic + SQLite/MySQL |
 
 ```
-┌──────────────────────────────────────────────────────┐
-│  浏览器 / 移动端浏览器                                │
-│  Vue 3 + Vite + TS  (port 5173)                      │
-└────────────────────┬─────────────────────────────────┘
-                     │  REST / JSON  ( /api/** )
-                     ▼
-┌──────────────────────────────────────────────────────┐
-│  Spring Boot 3  (port 8080)                          │
-│  ┌────────────────────────────────────────────────┐  │
-│  │ Controller 层：参数校验（@Valid）、鉴权          │  │
-│  ├────────────────────────────────────────────────┤  │
-│  │ Manager 层：事务边界、业务编排                   │  │
-│  │  AuthManager / PlanManager / ItineraryManager  │  │
-│  │  FeedbackManager / POIManager / StrategyManager│  │
-│  ├────────────────────────────────────────────────┤  │
-│  │ Engine 层：StrategyEngine（排程算法）           │  │
-│  │            BudgetCalculator / BudgetIterator   │  │
-│  ├────────────────────────────────────────────────┤  │
-│  │ Adapter 层：7 个外部系统代理（超时 + 降级 + 缓存）│  │
-│  ├────────────────────────────────────────────────┤  │
-│  │ Mapper 层：MyBatis-Plus                         │  │
-│  └────────────────────────────────────────────────┘  │
-└──────┬───────────────────────────────┬───────────────┘
+┌──────────────────────────────────────────────────────────┐
+│  浏览器                                                   │
+│  HTML + HTMX + Alpine.js                                 │
+└──────────────────────┬───────────────────────────────────┘
+                       │  HTTP  (整页 GET / 局部 hx-get / 表单 POST)
+                       ▼
+┌──────────────────────────────────────────────────────────┐
+│  FastAPI  (port 8000，单进程)                             │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │ api 层：路由 + Pydantic 校验 + 鉴权依赖             │  │
+│  │   pages.py（HTML）  auth.py  conditions.py          │  │
+│  │   itineraries.py    feedback.py  admin_*.py         │  │
+│  ├────────────────────────────────────────────────────┤  │
+│  │ services 层：业务编排，唯一的事务边界                │  │
+│  │   AuthService  PlanService  ItineraryService        │  │
+│  │   AdjustService  ShareService  POIService …         │  │
+│  ├────────────────────────────────────────────────────┤  │
+│  │ engine 层：纯函数排程算法，无 I/O、无 ORM            │  │
+│  │   Selector  Scorer  Packer  Feasibility             │  │
+│  │   BudgetIterator                                    │  │
+│  ├────────────────────────────────────────────────────┤  │
+│  │ adapters 层：7 个外部系统代理（超时+缓存+降级）      │  │
+│  ├────────────────────────────────────────────────────┤  │
+│  │ models 层：SQLAlchemy 2.0 声明式模型                 │  │
+│  └────────────────────────────────────────────────────┘  │
+└──────┬───────────────────────────────┬───────────────────┘
        │                               │
        ▼                               ▼
 ┌──────────────┐          ┌────────────────────────────┐
-│  MySQL 8     │          │  7 个外部遗留系统           │
-│  8 张核心表   │          │  天气 / 地图 / 人流量 /     │
-└──────────────┘          │  票务 / 活动 / 酒店 / 认证  │
-                          └────────────────────────────┘
+│ SQLite（开发）│          │  7 个外部遗留系统           │
+│ MySQL（生产） │          │  天气 / 地图 / 人流 / 票务 / │
+│  8 张核心表   │          │  活动 / 酒店 / 认证         │
+└──────────────┘          └────────────────────────────┘
 ```
+
+**为什么从前后端分离改回单体**：行程规划是「表单 → 结果页 → 局部调整」的短链路，SPA 带来的路由与状态管理成本大于收益；改为服务端渲染后，三人只需维护一种语言、一套依赖、一个 CI 运行时。代价是页面局部刷新依赖 HTMX 而非组件化，交互复杂度上限更低——这对本项目的 8 个页面是够的。决策记录见 [ADR-007](./adr/ADR-007-switch-to-python-stack.md)。
+
 
 ## 2. 模块划分
 
 ```
-backend/src/main/java/com/smarttrip/
-├── SmartTripApplication.java
-├── common/                  公共组件
-│   ├── exception/           统一异常与错误码
-│   ├── response/            统一响应体 ApiResponse<T>
-│   ├── config/              配置类（CORS、MyBatis、Cache）
-│   └── util/                工具类
-├── auth/                    认证与偏好（UC-01）
-│   ├── controller/  AuthController
-│   ├── manager/     AuthManager
-│   ├── adapter/     AuthServerAdapter
-│   └── entity/      Tourist, Preference
-├── condition/               出行条件（UC-02）
-│   ├── controller/  ConditionController
-│   ├── manager/     ConditionValidator
-│   └── entity/      TravelCondition
-├── plan/                    行程生成（UC-03）
-│   ├── controller/  PlanController
-│   ├── manager/     PlanManager
-│   ├── selector/    CandidateSelector
-│   ├── engine/      StrategyEngine, ScoreCalculator
-│   ├── budget/      BudgetCalculator, BudgetIterator
-│   ├── validator/   FeasibilityChecker
-│   └── entity/      Itinerary, ItineraryDay, Activity
-├── itinerary/               行程查看与调整（UC-04, UC-05, UC-06, UC-07）
-│   ├── controller/  ItineraryController, ShareController
-│   ├── manager/     ItineraryManager, AdjustService, ShareService
-│   └── export/      IcsExportService
-├── poi/                     POI 与数据维护（UC-08）
-│   ├── controller/  AdminPOIController
-│   ├── manager/     POIManager
-│   └── entity/      POI, Event
-├── strategy/                策略参数（UC-09）
-│   ├── controller/  AdminStrategyController
-│   ├── manager/     StrategyManager
-│   └── entity/      StrategyParameter
-└── external/                外部系统代理
-    ├── WeatherServerAdapter
-    ├── MapServerAdapter
-    ├── TrafficServerAdapter
-    ├── TransitServerAdapter
-    ├── EventServerAdapter
-    ├── HotelServerAdapter
-    └── AuthServerAdapter
+backend/app/
+├── main.py                      应用入口：创建 app、挂中间件与路由、启动钩子
+├── core/                        横切关注点
+│   ├── config.py                Settings（pydantic-settings 读 .env）
+│   ├── errors.py                错误码枚举 + 业务异常基类（39 个码，与 docs/api.md 一致）
+│   ├── handlers.py              异常 → 统一错误响应的转换
+│   ├── security.py              JWT 签发/校验、密码哈希、分享链接 HMAC 签名
+│   ├── deps.py                  依赖注入：get_db / current_tourist / require_admin
+│   └── logging.py               结构化日志（含 trace_id）
+├── api/                         路由层，一个用例一个模块
+│   ├── router.py                汇总挂载，统一 /api 前缀
+│   ├── pages.py                 HTML 页面路由（服务端渲染入口）
+│   ├── auth.py                  UC-01 登录与偏好
+│   ├── conditions.py            UC-02 出行条件
+│   ├── itineraries.py           UC-03 生成 / UC-04 查看 / UC-05 调整 / UC-06 分享
+│   ├── feedback.py              UC-07 反馈
+│   ├── admin_poi.py             UC-08 POI 维护
+│   ├── admin_strategy.py        UC-09 策略参数
+│   └── health.py                /api/health
+├── services/                    业务编排，唯一的事务边界
+│   ├── auth_service.py
+│   ├── condition_service.py
+│   ├── plan_service.py          生成主链路编排
+│   ├── itinerary_service.py     查询、列表、删除
+│   ├── adjust_service.py        副本调整事务
+│   ├── share_service.py         分享链接签发与只读视图
+│   ├── feedback_service.py
+│   ├── poi_service.py
+│   └── strategy_service.py      权重读写与版本管理
+├── engine/                      排程算法（纯函数，禁止 import models / adapters）
+│   ├── models.py                纯 dataclass：Candidate / DayPlan / PlanResult
+│   ├── selector.py              候选集筛选与规模收敛
+│   ├── scoring.py               Score 公式实现
+│   ├── packer.py                按天贪心装箱 + 用餐/休息预留
+│   ├── feasibility.py           硬约束校验，产出冲突清单
+│   └── budget_iterator.py       超预算时的降本迭代
+├── adapters/                    外部系统代理
+│   ├── base.py                  统一封装：超时 / 重试 / 缓存 / 降级 / 调用计数
+│   ├── weather.py  map.py  traffic.py  event.py
+│   ├── ticket.py   hotel.py  auth.py
+├── models/                      SQLAlchemy 2.0 声明式模型（8 张表）
+├── schemas/                     Pydantic 模型：请求 / 响应 / 内部数据类
+├── templates/                   Jinja2 模板（base.html + 8 个页面 + 局部片段）
+├── static/                      CSS / HTMX / Alpine.js
+└── seed/                        演示 POI 与活动数据（JSON）
 ```
 
-**分层约束**（Code Review 时检查）：
+**分层约束**（Code Review 时逐条检查）：
 
-- Controller 不写业务逻辑，只做参数绑定、校验、调用 Manager、包装响应
-- Manager 是**唯一**的事务边界（`@Transactional` 只允许标在 Manager 方法上）
-- Engine 层不依赖 Mapper，只接受领域对象作为输入（便于单元测试）
-- Adapter 层负责超时、重试、缓存、降级，Manager 不直接发 HTTP 请求
-- 实体类不跨层透传到 Controller，统一转 DTO
+- **路由不写业务**：`api/` 下的函数只做参数绑定、调用 service、返回 schema，不出现 SQL 与计算逻辑
+- **事务只在 service**：`session.begin()` 只允许出现在 `services/`，`api/` 与 `engine/` 不得开事务
+- **engine 保持纯净**：只依赖标准库与 `engine/models.py`，不得 `import` `models/`、`adapters/`、`sqlalchemy`——这样排程算法可以脱离数据库单测
+- **外部调用只走 adapter**：`services/` 不得直接 `import httpx` / `requests`，必须经 `adapters/` 以获得统一的超时、缓存、降级与调用计数
+- **ORM 不出 service**：路由拿到的必须是 Pydantic schema，不得把 SQLAlchemy 对象直接返回（否则 `DetachedInstanceError` 与字段泄露同时发生）
+
 
 ## 3. 关键数据流
 
@@ -112,35 +121,35 @@ backend/src/main/java/com/smarttrip/
 ```
 POST /api/itineraries/generate
   │
-  ▼  Controller 校验 TravelCondition（@Valid + 业务校验）
-PlanManager.generateItinerary(condition)   [@Transactional]
+  ▼  api/itineraries.py：TravelConditionIn（Pydantic）自动校验 → 业务规则二次校验
+PlanService.generate(condition, tourist)   [session.begin() 事务]
   │
-  ├─(1)→ CandidateSelector.select(condition)
-  │        └→ POILib 查同城 PUBLISHED POI
+  ├─(1)→ Selector.select(condition, poi_repo)
+  │        └→ 查同城 PUBLISHED POI
   │        └→ 按偏好标签 / 必去 / 必避 过滤
   │        └→ 规模收敛至 [20, 300]
   │
-  ├─(2)→ TrafficServerAdapter.getHistoricalVolume(poiIds, dateRange)  [批量]
-  │        └→ CrowdIndexCalculator 计算各日 CrowdIndex ∈ [0,100]
+  ├─(2)→ TrafficAdapter.get_historical_volume(poi_ids, date_range)  [批量]
+  │        └→ 计算各日 CrowdIndex ∈ [0,100]
   │
-  ├─(3)→ EventServerAdapter.getEvents(city, dateRange)
+  ├─(3)→ EventAdapter.get_events(city, date_range)
   │        └→ 与偏好标签匹配，附加入候选集（category=EVENT）
   │
-  ├─(4)→ MapServerAdapter.getTravelMatrix(poiIds)   [批量，缓存 1h]
+  ├─(4)→ MapAdapter.get_travel_matrix(poi_ids)   [批量，缓存 1h]
   │        └→ 通勤时长矩阵 N×N
   │
-  ├─(5)→ WeatherServerAdapter.getForecast(city, dateRange)
+  ├─(5)→ WeatherAdapter.get_forecast(city, date_range)
   │        └→ 逐日天气（暴雨/大风/高温标记）
   │
-  └─(6)→ StrategyEngine.plan(condition, candidates, context)
-           ├→ ScoreCalculator.compute()  综合评分排序
+  └─(6)→ Packer.plan(condition, candidates, context)   ← 纯函数，无 I/O
+           ├→ Scorer.compute()          综合评分排序
            ├→ 按天贪心装箱 + 预留用餐/休息
-           ├→ FeasibilityChecker.validate()
-           ├→ BudgetIterator.iterate()   超预算降本
+           ├→ Feasibility.validate()
+           ├→ BudgetIterator.iterate()  超预算降本
            └→ 1–3 套方案（含推荐理由）
 
   ▼  持久化 Itinerary(PROPOSED) + Day + Activity
-返回 List<ItineraryDTO>
+返回 list[ItineraryOut]
 ```
 
 **外部调用预算**（BR-10，单次 ≤ 60 次）：
@@ -161,12 +170,12 @@ PlanManager.generateItinerary(condition)   [@Transactional]
 PUT /api/itineraries/{id}/adjust
   │
   ▼
-AdjustService.adjust(planId, operation)   [@Transactional]
+AdjustService.adjust(plan_id, operation, tourist)   [session.begin() 事务]
   ├→ 加载行程 → 复制为新版本副本（不覆盖原方案）
   ├→ 应用操作（调序 / 替换 / 删增 / 锁定重排）
-  ├→ MapServerAdapter.getTravelTime()  只重算受影响相邻两项（BR-15）
-  ├→ FeasibilityChecker.revalidate()   返回冲突清单
-  └→ 用户确认后 save()：version+1，旧版本 SUPERSEDED
+  ├→ MapAdapter.get_travel_time()  只重算受影响相邻两项（BR-15）
+  ├→ Feasibility.revalidate()      返回冲突清单
+  └→ 用户确认后 commit：version+1，旧版本 SUPERSEDED
      （历史最多 10 个版本，BR-14）
 ```
 
@@ -206,6 +215,7 @@ strategy_parameter（独立表，版本号自增）
 | ADR-004 | 外部数据全部走服务端代理 | 防止 API Key 暴露在前端；统一超时、缓存、限流、降级 | 前端直连第三方 | [adr/004](./adr/ADR-004-server-side-proxy.md) |
 | ADR-005 | 行程调整在副本上执行，确认后覆盖 | 保证「撤销」语义天然成立；避免用户误操作污染已保存方案 | 直接改原对象 + 操作日志回滚 | [adr/005](./adr/ADR-005-adjust-on-copy.md) |
 | ADR-006 | 拥挤度用「历史同期均值 + 节假日系数」，不用 ML | 缺乏训练数据；简单统计模型可解释，便于归因 | LSTM / XGBoost | [adr/006](./adr/ADR-006-crowd-index-statistical.md) |
+| ADR-007 | 技术栈整体切换为 Python（FastAPI + Jinja2），放弃 Spring Boot + Vue 3 | 三人 Python 熟练度高，Java 需现学；CI 从两套运行时降为一套；本地环境从 4 项依赖降为 1 项 | 保持 Java；或 Java + Node 双栈并行 | [adr/007](./adr/ADR-007-switch-to-python-stack.md) |
 
 ## 6. 非功能设计要点
 
@@ -213,10 +223,10 @@ strategy_parameter（独立表，版本号自增）
 
 | 指标 | 目标 | 手段 |
 |---|---|---|
-| 行程生成 P95 | ≤ 10 秒 | 外部调用批量 + 缓存；贪心算法 O(n²) 而非指数级；超 10 秒时异步化 + 轮询 |
-| 结果页首屏 | ≤ 3 秒 | 前端路由懒加载；时间轴虚拟滚动；图片懒加载 |
-| 调序重算 | ≤ 1.5 秒 | 只重算受影响相邻两项（BR-15）；前端乐观更新 |
-| 并发 | 200 规划请求 | 无状态服务 + 连接池 + 外部调用限流 |
+| 行程生成 P95 | ≤ 10 秒 | 外部调用批量 + 缓存；贪心算法 O(n²) 而非指数级；超 10 秒时改为后台任务 + 轮询（HTMX `hx-trigger="every 2s"`） |
+| 结果页首屏 | ≤ 3 秒 | 服务端渲染直接出 HTML，无需等待 JS 打包；静态资源带 hash 指纹走强缓存 |
+| 调序重算 | ≤ 1.5 秒 | 只重算受影响相邻两项（BR-15）；HTMX 局部替换行程卡片段，不整页刷新 |
+| 并发 | 200 规划请求 | 无状态服务 + SQLAlchemy 连接池；`uvicorn --workers 4`；外部调用信号量限流 |
 
 ### 6.2 降级策略
 
@@ -231,28 +241,39 @@ strategy_parameter（独立表，版本号自增）
 
 ### 6.3 安全
 
-- 所有外部 API Key 只存服务端环境变量，前端零暴露（ADR-004）
+- 所有外部 API Key 只存服务端环境变量（`Settings` 从 `.env` 读取），页面与静态资源中零暴露（ADR-004）
 - 分享链接使用 HMAC-SHA256 签名 token，防遍历（BR-17）
-- 分享响应体使用脱敏 DTO，剔除手机号、真实姓名
-- 用户输入全部经 Bean Validation + 业务校验双层把关
-- `.env` 永久忽略，CI 有硬编码密钥扫描步骤
+- 分享响应使用独立的 `ShareItineraryOut` schema，不包含手机号、真实姓名等字段
+- 用户输入经 **Pydantic v2 类型校验 + service 层业务校验**双层把关：前者拦格式（如 `days` 必须是 1–15 的整数），后者拦跨字段规则（如预算与天数的下限组合，BR-05）
+- Jinja2 模板默认开启自动转义，渲染用户内容时禁止使用 `|safe`（Code Review 检查项）
+- `.env` 永久忽略；CI 有硬编码密钥扫描步骤
 
 ## 7. 部署
 
 ```
-开发环境：localhost（Vite dev server 代理 /api 到 8080）
-CI    ：GitHub Actions ubuntu-latest，每次 PR 跑四步
-演示  ：docker compose up（db + backend + frontend nginx）
+开发环境：localhost:8000（uvicorn --reload，SQLite 文件随仓库外创建）
+CI    ：GitHub Actions ubuntu-latest，Python 3.11，SQLite 内存库，不依赖外部服务
+演示  ：docker compose up（db + web），或直接 uvicorn 单进程 + MySQL
 ```
 
 `docker-compose.yml`（Issue #1 创建）：
 
 ```yaml
 services:
-  db:        # MySQL 8，挂载 init.sql
-  backend:   # Spring Boot，depends_on db
-  frontend:  # nginx 托管 dist，反代 /api 到 backend
+  db:     # MySQL 8，挂载 init.sql 建库
+  web:    # python:3.11-slim，pip install -e .，uvicorn 启动，depends_on db
+          # 生产不用 --reload，workers 按 CPU 核数设置
 ```
+
+**环境差异只有一个变量**：`DATABASE_URL`。
+
+| 环境 | `DATABASE_URL` |
+|---|---|
+| 开发（默认） | `sqlite+pysqlite:///./smarttrip.db` |
+| 测试 / CI | `sqlite+pysqlite:///:memory:` |
+| 演示 / 生产 | `mysql+pymysql://user:pass@db:3306/smarttrip?charset=utf8mb4` |
+
+切换数据库只改这一行、再跑一次 `alembic upgrade head`，代码零改动。这是选择 SQLAlchemy 而非直接写 SQL 的主要收益。
 
 ---
 
@@ -261,3 +282,4 @@ services:
 | 日期 | 版本 | 修订人 | 说明 |
 |---|---|---|---|
 | 2026-11-09 | v0.1 | 【组长】 | 初稿：三层架构、模块划分、主链路数据流、ADR 索引 |
+| 2026-11-10 | v0.2 | 【组长】 | 技术栈切换为 Python：修改分层表与架构图（FastAPI 单体 + Jinja2 服务端渲染）；模块划分改为 Python 包结构并重写 5 条分层约束；数据流伪代码同步为 service/engine 调用；新增 ADR-007；部署章节改为 SQLAlchemy 多数据库方案 |

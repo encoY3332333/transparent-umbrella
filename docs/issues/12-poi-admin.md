@@ -12,15 +12,15 @@
 
 ## 任务清单 / Tasks
 
-- [ ] 后端：`POIController` 提供 `GET/POST/PUT /api/admin/pois`、`PUT /api/admin/pois/{id}/status`
-- [ ] 后端：`POIManager.validatePOI()`——必填字段、经纬度范围、开放时间格式、价格非负、承载量 ∈ [1, 200000]（BR-21）
-- [ ] 后端：地址与经纬度一致性复核（调 `MapServerAdapter.geocode()` 比对，偏差 > 1km 时要求二次确认）
+- [ ] 后端：`app/api/admin_poi.py` 提供 `GET/POST/PUT /api/admin/pois`、`PUT /api/admin/pois/{id}/status`
+- [ ] 后端：`POIService.validate_poi()`——必填字段、经纬度范围、开放时间格式、价格非负、承载量 ∈ [1, 200000]（BR-21）；字段级格式校验交给 Pydantic schema，跨字段规则放 service
+- [ ] 后端：地址与经纬度一致性复核（调 `MapAdapter.geocode()` 比对，偏差 > 1km 时要求二次确认）
 - [ ] 后端：批量 CSV 导入，返回失败行号与原因清单，成功的行标注批次号
 - [ ] 后端：变更日志（操作人、时间、变更前后 JSON 快照），保留 180 天（BR-22）
 - [ ] 后端：停用被行程引用的 POI 时允许操作，但在已有行程中标记「已停业」
-- [ ] 前端：`AdminPOIView.vue`——列表（按城市/类别/状态筛选）+ 编辑抽屉 + 批量导入上传区
-- [ ] 前端：变更日志查看（时间轴形式）
-- [ ] 测试：`POIManagerTest` 覆盖字段校验、坐标偏差告警、批量导入部分失败、停用引用检查
+- [ ] 页面：`templates/admin/poi.html`——列表（按城市/类别/状态筛选，筛选用 `hx-get` 局部刷新）+ 编辑抽屉 + 批量导入上传区
+- [ ] 页面：变更日志查看（时间轴形式）
+- [ ] 测试：`tests/services/test_poi_service.py` 覆盖字段校验、坐标偏差告警、批量导入部分失败、停用引用检查
 
 ## 验收标准 / Acceptance Criteria
 

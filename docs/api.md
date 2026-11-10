@@ -10,13 +10,13 @@
 
 | 项 | 约定 |
 |---|---|
-| Base URL | `http://localhost:8080`（开发）/ `https://<domain>`（演示） |
+| Base URL | `http://localhost:8000`（开发）/ `https://<domain>`（演示） |
 | 前缀 | 所有业务接口以 `/api` 开头 |
 | 编码 | UTF-8，`Content-Type: application/json` |
-| 时间格式 | 日期 `yyyy-MM-dd`；日期时间 `yyyy-MM-dd'T'HH:mm:ss`（无时区，按服务器本地时区解释） |
-| 金额 | `decimal`，单位**元**，JSON 中为 number，保留 2 位小数 |
-| 分页 | `?page=0&size=20`（page 从 0 开始），响应含 `page` `size` `totalElements` `totalPages` |
-| 鉴权 | `Authorization: Bearer <access_token>`，除标注「公开」的接口外均需携带（ADR-001） |
+| 时间格式 | 日期 `YYYY-MM-DD`；日期时间 `YYYY-MM-DDTHH:MM:SS`（ISO 8601，无时区，按服务器本地时区解释） |
+| 金额 | 十进制数，单位**元**，JSON 中为 number，保留 2 位小数 |
+| 分页 | `?page=1&size=20`（page 从 1 开始），响应含 `page` `size` `total` `pages` |
+| 鉴权 | **HttpOnly Cookie**：登录成功后服务端下发 `access_token`（`HttpOnly; SameSite=Lax; Path=/`），浏览器自动携带。除标注「公开」的接口外均需登录（ADR-001 复核节） |
 
 ### 0.2 统一响应体
 
@@ -56,7 +56,7 @@
 |---|---|---|---|
 | `OK` | 200 | 成功 | — |
 | `PARAM_INVALID` | 400 | 参数校验失败 | 展示 `details` 中的字段错误 |
-| `UNAUTHORIZED` | 401 | 未登录 / token 过期 | 清除本地 token，跳转登录 |
+| `UNAUTHORIZED` | 401 | 未登录 / token 过期 | 清除 Cookie，跳转登录 |
 | `FORBIDDEN` | 403 | 无权限（如非管理员访问后台） | 提示无权限并返回上一页 |
 | `NOT_FOUND` | 404 | 资源不存在 | 展示空状态页 |
 | `CONFLICT` | 409 | 状态冲突（如重复保存） | 提示并刷新数据 |
@@ -570,7 +570,7 @@ POST /api/itineraries/{id}/save
 
 **状态机**：`PROPOSED → SAVED`。若当前不是 `PROPOSED`，返回 `CONFLICT`。
 
-**未登录**处理：本接口需鉴权。前端在 `PROPOSED` 结果页点「保存」时若未登录，先跳登录，登录成功后带原 `id` 重放。
+**未登录**处理：本接口需鉴权。页面在 `PROPOSED` 结果页点「保存」时若未登录，先跳登录，登录成功后回到原 `id` 继续。
 
 ---
 
@@ -595,13 +595,13 @@ POST /api/itineraries/{id}/share
   "code": "OK",
   "data": {
     "token": "eyJpZCI6MzAwMSwiaWF0IjoxNzYyNjg0MDAwfQ.a3f9c1",
-    "url": "http://localhost:5173/share/eyJpZCI6MzAwMSwiaWF0IjoxNzYyNjg0MDAwfQ.a3f9c1",
+    "url": "http://localhost:8000/share/eyJpZCI6MzAwMSwiaWF0IjoxNzYyNjg0MDAwfQ.a3f9c1",
     "expiresAt": "2026-11-16T21:00:00"
   }
 }
 ```
 
-**安全**：token 用 HMAC-SHA256 签名（BR-17），防遍历。响应体为脱敏 DTO（剔除手机号、真实姓名）。
+**安全**：token 用 HMAC-SHA256 签名（BR-17），防遍历。响应体为独立的 `ShareItineraryOut`，不含手机号、真实姓名等字段。
 
 ---
 

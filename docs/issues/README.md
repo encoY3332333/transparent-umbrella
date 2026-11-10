@@ -20,6 +20,10 @@
 > **状态：14 个 Issue 已于 2026-11-10 全部创建完毕**，实际编号与下表行序完全一致（`#1`–`#14`），
 > 每个都带 Label 与 Milestone，正文与本目录文件内容一致。
 > 唯一的待办是 **Assignee 尚未指派**——三人真实 GitHub 账号确认后，在 Issue 右侧设置即可（见文末）。
+>
+> **关于 `frontend` / `backend` 两个 Label**：Label 名沿用技术栈切换前的命名（已上线，改名会丢失历史），
+> 语义已调整为——`backend` = Python 应用逻辑（`services/` `engine/` `adapters/` `models/` `schemas/`），
+> `frontend` = Jinja2 模板与 HTMX 交互（`templates/` `static/`）。详见 [ADR-007](../adr/ADR-007-switch-to-python-stack.md)。
 
 | 文件 | 标题 | 用例 | Milestone | Assignee | 预估 | Labels |
 |---|---|---|---|---|---|---|

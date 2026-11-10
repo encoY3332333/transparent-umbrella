@@ -24,6 +24,9 @@
 
 **方式三：命令行**（需 Java + plantuml.jar）
 
+> 这是**文档工具链**的依赖，不是应用依赖。应用本身是纯 Python，只有需要重新生成插图时才需要 Java。
+> `scripts/render-diagrams.py` 会自动探测 `plantuml.jar` 的位置；找不到时给出下载提示。
+
 ```bash
 # 本仓库使用的方式，PNG 输出到 docs/diagrams/png/
 python scripts/render-diagrams.py

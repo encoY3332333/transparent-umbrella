@@ -39,7 +39,7 @@ SmartTrip 把这些重复劳动自动化。用户只需输入少量条件，系�
 | 文档基线 | SRS v1.0（14 张 UML 图已嵌入）、架构说明、接口清单、6 份 ADR | ✅ 已冻结（`v0.0.1`） |
 | 工程配置 | CI、Issue/PR 模板、CODEOWNERS、分支规范 | ✅ 已生效，CI 绿灯 |
 | 任务拆分 | [14 个 Issue](https://github.com/encoY3332333/transparent-umbrella/issues?q=is%3Aissue) 分入 5 个 Milestone，共 92 人时 | ✅ 已创建 |
-| 代码 | `backend/` 与 `frontend/` 脚手架 | ⬜ 从 [Issue #1](https://github.com/encoY3332333/transparent-umbrella/issues/1) 开始 |
+| 代码 | `backend/` 应用脚手架（FastAPI + Jinja2 单体） | ⬜ 从 [Issue #1](https://github.com/encoY3332333/transparent-umbrella/issues/1) 开始 |
 
 - 版本发布：[`v0.0.1`](https://github.com/encoY3332333/transparent-umbrella/releases/tag/v0.0.1)（pre-release，仅文档与配置）
 - 任务看板：[Issues](https://github.com/encoY3332333/transparent-umbrella/issues) · [Milestones](https://github.com/encoY3332333/transparent-umbrella/milestones)
@@ -48,12 +48,18 @@ SmartTrip 把这些重复劳动自动化。用户只需输入少量条件，系�
 
 ## 技术栈
 
+**纯 Python 技术栈**，前后端同仓同语言，一条 `pip install` 即可跑起来，不需要 Node、JDK 或数据库服务。
+
 | 层 | 技术选型 | 选型理由 |
 |---|---|---|
-| 表现层 | Vue 3 + Vite + TypeScript | 构建快，适合短周期；组合式 API 便于复用行程卡片逻辑 |
-| 业务层 | Spring Boot 3 + Java 17 | 排程算法用 Java 便于写单元测试（JUnit 5 + JaCoCo 覆盖率） |
-| 数据层 | MySQL 8 + MyBatis-Plus | 行程/POI 为强关系结构；本地可用 docker compose 一键起库 |
+| 表现层 | Jinja2 模板 + HTMX + Alpine.js | 服务端渲染，改完刷新即见效果；HTMX 用 HTML 属性做局部刷新，省掉一套前端状态同步 |
+| 业务层 | Python 3.11 + FastAPI | 类型注解即校验：Pydantic v2 直接承载 SRS 的 24 条业务规则；自动生成 OpenAPI 文档 |
+| 排程引擎 | 纯 Python（标准库） | 算法写成无副作用的纯函数，不碰数据库，单测不需要 mock，覆盖率好拉 |
+| 数据层 | SQLAlchemy 2.0 + Alembic | 声明式模型 + 版本化迁移；开发用 SQLite 零配置，生产切 MySQL 只改一行 `DATABASE_URL` |
+| 质量工具 | Ruff + Mypy + Pytest | Ruff 一个工具承担 lint 与格式化；Mypy 卡住类型漂移；Pytest 的 fixture 便于构造行程测试数据 |
 | CI/CD | GitHub Actions | 与课程要求的 PR 门禁、状态检查天然集成 |
+
+> **为什么不用 Java / Vue**：初版设计是 Spring Boot + Vue 3，后来全组评估后改成纯 Python。决策记录见 [ADR-007](./docs/adr/ADR-007-switch-to-python-stack.md)——里面写了切换的代价（重写架构文档与 14 个 Issue 的技术备注）和收益（三人无需切换语言、CI 从 2 套运行时降到 1 套、本地环境从「JDK + Maven + Node + MySQL」降到「Python + SQLite」）。
 
 架构说明与 ADR 见 [`docs/architecture.md`](./docs/architecture.md)、[`docs/adr/`](./docs/adr/)。
 
@@ -65,32 +71,45 @@ SmartTrip 把这些重复劳动自动化。用户只需输入少量条件，系�
 
 ### 环境要求
 
-- Node.js >= 22
-- JDK >= 17
-- MySQL >= 8.0（或使用 docker compose）
-- Docker Desktop（可选）
+- **Python >= 3.11**（唯一必需项）
+- 可选：MySQL >= 8.0（不装则用 SQLite，零配置）
+- 可选：Docker Desktop（用于演示环境 `docker compose up`）
 
 ### 启动步骤
 
 ```bash
 git clone https://github.com/encoY3332333/transparent-umbrella.git
-cd transparent-umbrella
+cd transparent-umbrella/backend
 
-# 1. 配置环境变量
-cp .env.example .env          # 填写数据库连接与第三方 API Key
+# 1. 虚拟环境与依赖
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
 
-# 2. 启动数据库（二选一）
-docker compose up -d db
+# 2. 配置环境变量
+cp ../.env.example .env            # 默认 SQLite，无需改任何值即可启动
 
-# 3. 启动后端
-cd backend
-mvn spring-boot:run           # 默认 http://localhost:8080
+# 3. 建表（Alembic 迁移）
+alembic upgrade head
 
-# 4. 启动前端（另开终端）
-cd frontend
-npm ci
-npm run dev                   # 默认 http://localhost:5173
+# 4. 启动
+uvicorn app.main:app --reload --port 8000
 ```
+
+打开 http://localhost:8000 即可访问。接口文档在 http://localhost:8000/docs（FastAPI 自动生成，与 `docs/api.md` 同源）。
+
+> 首次启动会自动建 SQLite 文件并从 `app/seed/` 导入演示 POI 数据；切换到 MySQL 只需把 `.env` 里的 `DATABASE_URL` 改成 `mysql+pymysql://...` 后重新执行 `alembic upgrade head`。
+
+### 常用命令
+
+```bash
+pytest -q --cov=app            # 跑测试并输出覆盖率
+ruff check app tests --fix     # 静态检查并自动修复
+ruff format app tests          # 格式化
+mypy app                       # 类型检查
+python ../scripts/check-templates.py   # 检查 Jinja2 模板语法与静态资源引用
+```
+
 
 ### 演示账号
 
@@ -110,36 +129,55 @@ transparent-umbrella/
 ├── .gitignore
 ├── .env.example                 环境变量样例（不含真实密钥）
 ├── .github/
-│   ├── workflows/ci.yml         CI：backend / frontend / lint-repo / ci-summary 四段
+│   ├── workflows/ci.yml         CI：backend / templates / lint-repo / ci-summary 四段
 │   ├── ISSUE_TEMPLATE/          feature.md / bug.md
 │   ├── pull_request_template.md
 │   ├── CODEOWNERS               路径 → 负责人映射
 │   └── BRANCH_PROTECTION.md     组长手动配置清单（分支保护 / Labels / Milestones）
+├── backend/                     Python 应用（Issue #1 创建）
+│   ├── pyproject.toml           依赖与工具配置（Ruff / Mypy / Pytest 均在此）
+│   ├── alembic.ini              数据库迁移配置
+│   ├── app/
+│   │   ├── main.py              应用入口，挂载路由与中间件
+│   │   ├── core/                配置、异常、安全、日志、依赖注入
+│   │   ├── api/                 路由层，一个用例一个模块
+│   │   ├── services/            业务编排，唯一的事务边界
+│   │   ├── engine/              排程算法（纯函数，不依赖数据库）
+│   │   ├── adapters/            7 个外部系统代理（超时 / 缓存 / 降级）
+│   │   ├── models/              SQLAlchemy 模型
+│   │   ├── schemas/             Pydantic 模型（请求 / 响应 / 校验）
+│   │   ├── templates/           Jinja2 模板
+│   │   ├── static/              CSS、HTMX、Alpine.js
+│   │   └── seed/                演示数据
+│   ├── migrations/              Alembic 版本文件
+│   └── tests/                   单元测试 + 接口测试
 ├── docs/
 │   ├── srs/                     软件需求规格说明书（基线 V1.0）+ 基线管理说明
 │   ├── architecture.md          架构说明（分层、数据流、ADR 索引）
 │   ├── api.md                   接口清单（9 个用例、39 个错误码）
 │   ├── diagrams/                UML 图源文件（PlantUML）：用例图 / 9 张顺序图 / 类图 / 3 张状态图
-│   ├── adr/                     架构决策记录（ADR-001 ~ 006）
+│   ├── adr/                     架构决策记录（ADR-001 ~ 007）
 │   ├── issues/                  14 个 Issue 的完整正文
 │   ├── meetings/                会议纪要（md + docx 双份）
 │   ├── contributions/           个人工程贡献说明书模板
 │   ├── guides/                  协作规范、需求获取问卷与访谈提纲
+│   ├── reports/                 项目进展报告存档
 │   ├── release-notes/           版本发布说明
 │   ├── PUSH_GUIDE.md            首次推送与仓库配置的操作指引
 │   └── 附件5_需求清单与Issue拆分表.xlsx
-├── backend/                     Spring Boot 3 服务端（Issue #1 创建）
-├── frontend/                    Vue 3 + Vite 前端（Issue #1 创建）
-└── tests/                       集成测试与测试数据
+└── scripts/
+    ├── check-templates.py       CI 调用：模板语法与静态资源引用检查
+    └── render-diagrams.py       PlantUML 渲染（生成 SRS 插图）
 ```
+
 
 ## 团队与分工
 
 | 成员 | 角色 | 主要职责 | GitHub |
 |---|---|---|---|
-| 【组长】 | Maintainer / Tech Lead | 架构、排程算法、仓库治理、CI、评审、发布 | @encoY3332333 |
-| 【组员1】 | Requirements / Frontend | 需求获取与用例建模、前端页面与交互、评审 | @【组员1的GitHub名】 |
-| 【组员2】 | QA & Data / Backend | 外部数据源对接、数据模型、后端接口、测试与覆盖率 | @【组员2的GitHub名】 |
+| 【组长】 | Maintainer / Tech Lead | 架构、排程引擎、仓库治理、CI、评审、发布 | @encoY3332333 |
+| 【组员1】 | Requirements / 页面与交互 | 需求获取与用例建模、Jinja2 模板与 HTMX 交互、评审 | @【组员1的GitHub名】 |
+| 【组员2】 | QA & Data / 接口与数据 | 外部数据源适配、SQLAlchemy 模型、路由与 Schemas、测试与覆盖率 | @【组员2的GitHub名】 |
 
 评审交叉安排：组长的 PR 由组员1 评审，组员1 的 PR 由组员2 评审，组员2 的 PR 由组长评审——**任何 PR 都不允许自评自合**。
 
