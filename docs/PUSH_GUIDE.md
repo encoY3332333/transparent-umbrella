@@ -256,29 +256,32 @@ bundle 含**完整提交历史**，推上去之后与在本地直接推等价，
 
 ---
 
-# 当前状态（2026-11-10 11:20）
+# 当前状态（2026-11-10 11:25）
 
-| | |
-|---|---|
-| 远程 `main` | `05cd719`（文档状态同步那次） |
-| 本地 `main` | `f7a8c38`，领先 **3 个提交** |
-| 待推送内容 | 技术栈从 Java + Vue 切换为 Python 的完整改造（43 个文件） |
-| 阻塞原因 | 链路侧 TLS 中断，见上一节 |
-
-待推送的三个提交：
+技术栈切换的 4 个提交**已推送成功**：
 
 ```
+$ git -c http.proxy= -c https.proxy= push origin main
+To https://github.com/encoY3332333/transparent-umbrella.git
+   5958761..9b04036  main -> main
+```
+
+```
+9b04036  docs: document the TLS-reset failure mode and the current push state
 f7a8c38  docs: rewrite documents and issues for the Python stack
 057719a  docs(adr): record the decision to switch the stack to Python
 fe3d0c7  build(ci): replace Java and Node pipelines with a Python toolchain
 ```
 
-**网络恢复后只需一条命令**：
+**上面那节 `SSL_read: Connection was reset` 仍然保留**，因为这次的中断是间歇性的——11:18 之后连续 10 次全部失败，11:22 重试时又通了。组员在自己的网络上仍可能遇到，三步区分法依然适用。
 
-```bash
-cd D:\软件工程\transparent-umbrella
-git push origin main
-```
+如果推送报错，按报错对号入座：
 
-如果报 `CONNECT tunnel failed`，加 `-c http.proxy= -c https.proxy=`；如果报 `SSL_read: Connection was reset`，换网络。
+| 报错 | 加什么 |
+|---|---|
+| `CONNECT tunnel failed, response 502` | `git -c http.proxy= -c https.proxy= push origin main` |
+| `SSL_read: Connection was reset` | 换网络（手机热点），配置层面无解 |
+| `schannel: server closed abruptly` | `git config --global http.sslBackend openssl` |
+| `Permission denied` / `403` | 未被邀请为 Collaborator，或登录了错误的账号 |
+
 
