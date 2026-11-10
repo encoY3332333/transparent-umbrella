@@ -193,23 +193,92 @@ git ls-remote origin
 
 ---
 
-# 推送结果（已验证）
+# 故障排查：`SSL_read: Connection was reset` / `UNEXPECTED_EOF_WHILE_READING`
+
+**症状**：TCP 连得上、TLS 握手也成功，但一读响应就被重置。
 
 ```
-9ee6fdf  docs: rewrite push guide with the real root cause and VS Code flow   ← origin/main
-78502d7  docs: fix relative link in push guide
-83615d0  docs: add push guide for first-time repository setup
-4ce9be0  chore(repo): bootstrap project skeleton and collaboration setup
-f33eca7  Initial commit
+== Info: Host github.com:443 was resolved.
+== Info:   Trying 20.205.243.166:443...
+== Info: SSL connection using TLSv1.3 / TLS_AES_128_GCM_SHA256
+== Info: SSL certificate verified via OpenSSL.
+== Info: OpenSSL SSL_read: Connection was reset, errno 10054
+fatal: unable to access 'https://github.com/...': Failed to connect
 ```
 
-推送命令与输出：
+Python 侧表现为 `ssl.SSLEOFError: [SSL: UNEXPECTED_EOF_WHILE_READING]`。
+
+**这是三种网络故障里最难办的一种**，因为前两种（代理 502、schannel）都是本地配置问题，一改就好；这一种是**链路中途被中断**，配置怎么改都没用。
+
+**三步区分**（按顺序做，不要跳）：
+
+| 检查 | 命令 | 前两种故障 | 这一种 |
+|---|---|---|---|
+| 1. TCP 通不通 | `socket.create_connection(('github.com',443),5)` | 通 | **通**（100ms 左右） |
+| 2. TLS 握手 | `GIT_CURL_VERBOSE=1 git ls-remote origin` | 失败在 CONNECT 或握手 | **成功**，能看到 `SSL certificate verified` |
+| 3. 读响应 | 同上，看后续行 | — | **`SSL_read: Connection was reset`** |
+
+只有第 1 步通、第 2 步成功、第 3 步失败，才是这个问题。
+
+**处理**：换链路，不要改配置。
+
+1. **换网络**——手机热点最有效，通常立刻通
+2. **开代理软件**，然后让 git 走它：
+   ```bash
+   git config --global http.proxy http://127.0.0.1:<你的代理端口>
+   # 推完可以清掉：git config --global --unset http.proxy
+   ```
+3. **用 bundle 在别的机器上推**（见下文「离线推送」）
+
+**已经排除的原因**（不用再试）：换 SSL 后端（openssl/schannel 都试过）、清空 `http.proxy`、改 `postBuffer`、换 `github.com` 的 IP。这些都不影响 TLS 之后的链路。
+
+> 2026-11-10 实测：同一台机器、同一份配置，上午 11:00 之前直连正常并成功推送过两次，11:18 之后 `github.com:443`、`:22`、`ssh.github.com:443`、`api.github.com:443` 全部在 TLS 握手后被 RST。**这说明是链路侧的间歇性中断，不是仓库或凭据的问题**——本地提交一直完好，网络恢复后一条 `git push` 就能补上。
+
+---
+
+# 离线推送（网络不通时的兜底）
+
+本地提交是完整的，打成 bundle 后可以在任何联网的机器上推送：
+
+```bash
+# 1. 在有网的机器上，从 bundle 恢复
+git clone D:\软件工程\transparent-umbrella-骨架.bundle repo
+cd repo
+
+# 2. 指向真实远程
+git remote set-url origin https://github.com/encoY3332333/transparent-umbrella.git
+
+# 3. 推送（需要该仓库的写权限）
+git push origin main
+```
+
+bundle 含**完整提交历史**，推上去之后与在本地直接推等价，GitHub 上看不出区别。
+
+---
+
+# 当前状态（2026-11-10 11:20）
+
+| | |
+|---|---|
+| 远程 `main` | `05cd719`（文档状态同步那次） |
+| 本地 `main` | `f7a8c38`，领先 **3 个提交** |
+| 待推送内容 | 技术栈从 Java + Vue 切换为 Python 的完整改造（43 个文件） |
+| 阻塞原因 | 链路侧 TLS 中断，见上一节 |
+
+待推送的三个提交：
 
 ```
-$ git -c http.proxy= -c https.proxy= push origin main
-To https://github.com/encoY3332333/transparent-umbrella.git
-   f33eca7..9ee6fdf  main -> main
+f7a8c38  docs: rewrite documents and issues for the Python stack
+057719a  docs(adr): record the decision to switch the stack to Python
+fe3d0c7  build(ci): replace Java and Node pipelines with a Python toolchain
 ```
 
-远程 `refs/heads/main` 已指向 `9ee6fdf`，Actions 面板首次 CI 为绿色。
-`D:\软件工程\transparent-umbrella-骨架.bundle` 仍然保留，可作为离线备份或在新机器上恢复历史。
+**网络恢复后只需一条命令**：
+
+```bash
+cd D:\软件工程\transparent-umbrella
+git push origin main
+```
+
+如果报 `CONNECT tunnel failed`，加 `-c http.proxy= -c https.proxy=`；如果报 `SSL_read: Connection was reset`，换网络。
+
