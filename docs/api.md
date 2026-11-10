@@ -414,7 +414,7 @@ GET /api/itineraries/{id}
 ### 4.2 我的行程列表
 
 ```
-GET /api/itineraries?status=SAVED&page=0&size=10
+GET /api/itineraries?status=SAVED&page=1&size=10
 ```
 
 **响应**
@@ -436,7 +436,7 @@ GET /api/itineraries?status=SAVED&page=0&size=10
         "updatedAt": "2026-11-09T21:00:00"
       }
     ],
-    "page": 0, "size": 10, "totalElements": 3, "totalPages": 1
+    "page": 1, "size": 10, "total": 3, "pages": 1
   }
 }
 ```
@@ -664,7 +664,7 @@ GET /api/feedback/tags
 ### 9.1 POI 列表
 
 ```
-GET /api/admin/pois?city=西安&status=PUBLISHED&keyword=博物馆&page=0&size=20
+GET /api/admin/pois?city=西安&status=PUBLISHED&keyword=博物馆&page=1&size=20
 ```
 
 **响应**：分页的 POI 摘要列表。
@@ -790,12 +790,19 @@ GET /api/admin/strategies
 ## 11. 健康检查 `公开`
 
 ```
-GET /actuator/health
+GET /api/health
 ```
 
-**响应**：`{ "status": "UP", "components": { "db": {"status":"UP"} } }`
+**响应**
+
+```json
+{ "status": "ok", "version": "0.1.0", "env": "dev" }
+```
 
 **用途**：CI 的冒烟测试、`docker compose` 的 healthcheck。
+
+> 注意：本接口**不使用** `{code, message, data}` 外壳——探针只关心进程是否活着，
+> 多一层包装反而让 `curl -f` 与容器 healthcheck 需要额外解析。
 
 ---
 
@@ -817,4 +824,5 @@ GET /actuator/health
 
 | 日期 | 版本 | 修订人 | 说明 |
 |---|---|---|---|
-| 2026-11-09 | v0.1 | 【组长】 | 初稿：9 个用例的接口契约、统一响应体、39 个错误码 |
+| 2026-11-09 | v0.1 | 【组长】 | 初稿：9 个用例的接口契约、统一响应体、30 个错误码 |
+| 2026-11-10 | v0.2 | 【组长】 | 与 Issue #1 脚手架对齐：健康检查改为 `/api/health`（原 `/actuator/health` 是 Java 栈遗留）；分页示例统一从 `page=1` 开始；错误码数量按 `app/core/errors.py` 校正为 30 |
