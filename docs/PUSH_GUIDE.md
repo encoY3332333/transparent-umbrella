@@ -1,6 +1,15 @@
-> 这份文件的用途：仓库内容已全部准备好并在本地完成提交（3 个 commit）。**只剩「推送 + GitHub 网页配置」两步需要人来做**——认证与网页设置无法由工具代劳。
+> ## 状态：✅ 已于 2026-11-10 完成推送
 >
-> **重要前提已处理**：本机 git 默认的 `schannel` SSL 后端连接 GitHub 会报 `server closed abruptly`，已全局改为 `openssl`（`git config --global http.sslBackend openssl`）。若换机器操作遇到同样报错，执行这一条命令即可。
+> 4 个 commit 已推到 `main`（`f33eca7..9ee6fdf`），首次 CI 跑通并成功；
+> Labels、5 个 Milestone、14 个 Issue、`v0.0.1` Release 均已通过 GitHub API 建好。
+>
+> **本文件现在只作为参考手册**：给新加入的组员拉代码时用，或在遇到网络问题时查故障排查章节。
+> 不需要再照着下面的推送步骤执行一遍。
+>
+> 仍需人工处理的只剩两项，都要求 **Admin 权限**（当前账号只有 `push` + `triage`）：
+> 邀请组员 Collaborator、开启 main 分支保护。见 `.github/BRANCH_PROTECTION.md` 第 0 节。
+>
+> **本机已处理的前置修复**：git 默认的 `schannel` SSL 后端连 GitHub 会报 `server closed abruptly`，已全局改为 `openssl`（`git config --global http.sslBackend openssl`）。
 
 ---
 
@@ -82,21 +91,20 @@ git push origin main
 
 ---
 
-# 推送之后必须做的 8 件事（组长操作，不能代劳）
+# 推送之后必须做的事（更新于 2026-11-10）
 
-这些是 GitHub **网页设置**，任何工具都无法代替你点。完整操作步骤见
-[`.github/BRANCH_PROTECTION.md`](../.github/BRANCH_PROTECTION.md)。
-
-| # | 事项 | 位置 | 说明 |
+| # | 事项 | 状态 | 说明 |
 |---|---|---|---|
-| 1 | **推进去之后第一件事：不要马上开分支保护** | — | 先让 CI 跑一次，否则「Require status checks」里选不到任何检查项 |
-| 2 | 邀请 2 名 Collaborator | Settings → Collaborators | 用组员真实的 GitHub 用户名 |
-| 3 | 创建 10 个 Labels | Issues → Labels | 清单见 BRANCH_PROTECTION.md 第 4 节 |
-| 4 | 创建 5 个 Milestone | Issues → Milestones | M0-工程启动 / v0.1.0 Alpha / v0.2.0 Beta / v0.3.0 Pre / v1.0.0 |
-| 5 | 创建 14 个 Issue | Issues → New issue | 三种方式（手动 / CLI / 网页批量）见 BRANCH_PROTECTION.md 第 6 节 |
-| 6 | 开启分支保护 9 项 | Settings → Branches → Add rule | 对照表见 BRANCH_PROTECTION.md 第 3 节 |
-| 7 | 开 Discussions（可选） | Settings → General → Features | 用于课程讨论留痕 |
-| 8 | 建 v0.0.1 Release | Releases → Draft a new release | 正文直接粘贴 `docs/release-notes/v0.0.1.md` |
+| 1 | 推代码，等 CI 跑一次 | ✅ 已完成 | `9ee6fdf` 触发 CI 并成功，status checks 现在可选 |
+| 2 | 邀请 2 名 Collaborator | ⬜ **待组长** | 需 Admin。组员1 已加入（`richkoijx`），组员2 待定 |
+| 3 | 创建 10 个 Labels | ✅ 已完成 | 另有 7 个 GitHub 默认标签保留 |
+| 4 | 创建 5 个 Milestone | ✅ 已完成 | 截止日期按「第 1 周 = 2026-10-26」推算，可改 |
+| 5 | 创建 14 个 Issue | ✅ 已完成 | 编号 `#1`–`#14`，含 Label + Milestone；Assignee 待指派 |
+| 6 | 开启分支保护 9 项 | ⬜ **待组长** | 需 Admin。对照表见 `BRANCH_PROTECTION.md` 第 2 节 |
+| 7 | 开 Discussions（可选） | ⬜ 可选 | 无 API 开关，只能网页勾选 |
+| 8 | 建 v0.0.1 Release | ✅ 已完成 | pre-release，标签 `v0.0.1` |
+
+完整操作步骤见 [`.github/BRANCH_PROTECTION.md`](../.github/BRANCH_PROTECTION.md)。
 
 ---
 
@@ -116,6 +124,42 @@ git push origin main
 **注意**：`docs/contributions/_template.md` 里的 `【方案内容】`「【具体事件】」等是**模板引导语**，不是占位符，不要替换。
 
 批量替换建议用 VS Code 的「在文件中替换」（Ctrl+Shift+H），逐个确认后再提交——**不要**用脚本一把梭，容易误伤。
+
+---
+
+# 故障排查：`CONNECT tunnel failed, response 502`
+
+**症状**：`git push` 报
+
+```
+fatal: unable to access 'https://github.com/.../': CONNECT tunnel failed, response 502
+```
+
+**原因**：环境变量里存在 `HTTP_PROXY` / `HTTPS_PROXY`（指向本机某个代理端口），git 自动走了它，
+而该代理不放行 GitHub 的 CONNECT 隧道。注意这跟证书无关，换 SSL 后端也修不好。
+
+**解决**：推送时临时绕过代理。
+
+```bash
+git -c http.proxy= -c https.proxy= push origin main
+```
+
+如果长期需要绕过，可用 `git config --global --unset http.proxy` 清掉全局配置；
+但更常见的是反过来的情况——公司网络**必须**走代理，那就改成
+`git config --global http.proxy http://127.0.0.1:<端口>`。
+
+**诊断顺序**（避免误判成「被墙」）：
+
+```bash
+# 1. TCP 通不通
+#    python -c "import socket;socket.create_connection(('github.com',443),5);print('ok')"
+# 2. git 自己怎么连的
+git config --get http.proxy ; git config --get https.proxy
+# 3. 环境变量里有没有代理
+#    Windows: set | findstr /i proxy
+```
+
+本次的真实原因就是第 3 条：环境里注入了代理，而代理返回 502。绕过之后一次成功。
 
 ---
 
@@ -149,15 +193,23 @@ git ls-remote origin
 
 ---
 
-# 本地提交现状
-
-推送前，本地 `main` 领先 `origin/main` 三个提交：
+# 推送结果（已验证）
 
 ```
+9ee6fdf  docs: rewrite push guide with the real root cause and VS Code flow   ← origin/main
 78502d7  docs: fix relative link in push guide
 83615d0  docs: add push guide for first-time repository setup
 4ce9be0  chore(repo): bootstrap project skeleton and collaboration setup
-f33eca7  Initial commit          ← origin/main 当前指向这里
+f33eca7  Initial commit
 ```
 
-推送后仓库将包含 66 个文件。若网络不可用，可用 `D:\软件工程\transparent-umbrella-骨架.bundle`（含完整提交历史）拷到其他机器：`git clone <bundle> repo && cd repo && git remote set-url origin <远程地址> && git push origin main`。
+推送命令与输出：
+
+```
+$ git -c http.proxy= -c https.proxy= push origin main
+To https://github.com/encoY3332333/transparent-umbrella.git
+   f33eca7..9ee6fdf  main -> main
+```
+
+远程 `refs/heads/main` 已指向 `9ee6fdf`，Actions 面板首次 CI 为绿色。
+`D:\软件工程\transparent-umbrella-骨架.bundle` 仍然保留，可作为离线备份或在新机器上恢复历史。
