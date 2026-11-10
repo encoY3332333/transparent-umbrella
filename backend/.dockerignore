@@ -1,0 +1,12 @@
+# 构建上下文里塞进 .venv 会让镜像构建从几秒变成几分钟
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.db
+.env
