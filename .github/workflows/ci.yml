@@ -186,7 +186,14 @@ jobs:
         run: |
           echo "扫描疑似密钥..."
           PATTERNS='(api[_-]?key|secret|password|token)[[:space:]]*[:=][[:space:]]*["'"'"'][A-Za-z0-9_\-]{16,}'
-          if git grep -nEI "$PATTERNS" -- ':!*.md' ':!.env.example' ':!docs/' ':!*.yml' ':!*.yaml' ':!*.lock' ':!*.puml'; then
+          # 排除清单：
+          #   *.md / docs/     —— 文档要举例，写的是占位符
+          #   *.yml / *.yaml   —— CI 与 compose 里的演示口令
+          #   .env.example     —— 配置样例本身就该长得像密钥
+          #   backend/tests/   —— 测试固件用的是固定假值，必须可复现，不能换成环境变量
+          if git grep -nEI "$PATTERNS" -- \
+              ':!*.md' ':!.env.example' ':!docs/' ':!*.yml' ':!*.yaml' ':!*.lock' ':!*.puml' \
+              ':!backend/tests/'; then
             echo "::error::检测到疑似硬编码密钥，请改用 .env + 环境变量（禁止入库）"
             exit 1
           fi
