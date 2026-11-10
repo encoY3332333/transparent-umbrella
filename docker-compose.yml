@@ -1,0 +1,54 @@
+# ---------------------------------------------------------------
+# 演示环境：MySQL 8 + FastAPI 单体
+#
+# 开发时不要用它——`uvicorn --reload` + 本地 SQLite 更快。
+# 这个文件存在的意义是：答辩现场一条命令把环境复现出来。
+#
+#    docker compose up --build
+#    打开 http://localhost:8000
+# ---------------------------------------------------------------
+name: smarttrip
+
+services:
+  db:
+    image: mysql:8.0
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: root_in_demo_only
+      MYSQL_DATABASE: smarttrip
+    volumes:
+      - ./docs/docker/mysql-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - db-data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot_in_demo_only"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  web:
+    build: ./backend
+    environment:
+      APP_ENV: prod
+      APP_PORT: "8000"
+      DATABASE_URL: mysql+pymysql://smarttrip:smarttrip@db:3306/smarttrip?charset=utf8mb4
+      SECRET_KEY: demo-secret-change-me
+      JWT_SECRET: demo-jwt-secret-change-me
+      SHARE_SIGN_SALT: demo-share-salt-change-me
+      ADMIN_INIT_PASSWORD: demo-admin-pass-change-me
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  db-data:

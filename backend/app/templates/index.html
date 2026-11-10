@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}工程骨架{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">Issue #1 · 工程基建</p>
+  <h1>骨架已跑通，接下来可以并行开发了</h1>
+  <p class="lede">
+    这一页由 FastAPI 用 Jinja2 服务端渲染而成。页面里的交互脚本是本地文件
+    <code>app/static/vendor/</code> 下的 HTMX 与 Alpine.js，断网也不影响。
+  </p>
+</section>
+
+<section class="grid">
+  <article class="card">
+    <h2>运行时状态</h2>
+    <dl class="kv">
+      <dt>应用</dt><dd>{{ app_name }}</dd>
+      <dt>版本</dt><dd>v{{ app_version }}</dd>
+      <dt>环境</dt><dd>{{ app_env }}</dd>
+      <dt>渲染方式</dt><dd>Jinja2 服务端渲染</dd>
+    </dl>
+  </article>
+
+  <article class="card">
+    <h2>HTMX 局部刷新</h2>
+    <p class="muted">点一下，页面只替换下面这块，不整页刷新。</p>
+    <button class="btn" hx-get="/api/health" hx-target="#health-out" hx-swap="innerHTML">
+      拉取 /api/health
+    </button>
+    <pre id="health-out" class="output">尚未请求</pre>
+  </article>
+
+  <article class="card" x-data="{ count: 0 }">
+    <h2>Alpine.js 状态</h2>
+    <p class="muted">局部状态不需要来回请求服务端。</p>
+    <div class="row">
+      <button class="btn btn-ghost" x-on:click="count--">−1</button>
+      <strong class="counter" x-text="count"></strong>
+      <button class="btn btn-ghost" x-on:click="count++">+1</button>
+    </div>
+  </article>
+</section>
+
+<section class="card">
+  <h2>下一步</h2>
+  <ol class="steps">
+    <li>看接口契约：<a href="/docs">/docs</a>（FastAPI 自动生成，与 <code>docs/api.md</code> 同源）</li>
+    <li>认领 Issue：#2 登录 · #3 出行条件 · #4 行程生成 · #5 POI 与拥挤度</li>
+    <li>建表：<code>alembic upgrade head</code>（本版本只有基线迁移，业务表随功能落地）</li>
+  </ol>
+</section>
+{% endblock %}

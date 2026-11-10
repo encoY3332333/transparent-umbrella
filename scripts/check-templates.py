@@ -8,6 +8,9 @@
 用法：
     python scripts/check-templates.py [--templates DIR] [--static DIR]
 
+默认路径按**仓库根目录**解析，因此在 backend/ 下执行
+`python ../scripts/check-templates.py` 也能正确找到模板。
+
 退出码：
     0 全部通过
     1 存在语法错误或缺失的静态资源
@@ -22,8 +25,9 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, TemplateSyntaxError
 
-DEFAULT_TEMPLATES = Path("backend/app/templates")
-DEFAULT_STATIC = Path("backend/app/static")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_TEMPLATES = REPO_ROOT / "backend" / "app" / "templates"
+DEFAULT_STATIC = REPO_ROOT / "backend" / "app" / "static"
 
 # 模板中引用静态资源的写法，需与 base.html 里的约定保持一致
 STATIC_REF = re.compile(r"""\{\{\s*url_for\(\s*['"]static['"]\s*,\s*path\s*=\s*['"]([^'"]+)['"]""")

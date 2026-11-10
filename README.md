@@ -39,7 +39,7 @@ SmartTrip 把这些重复劳动自动化。用户只需输入少量条件，系�
 | 文档基线 | SRS v1.0（14 张 UML 图已嵌入）、架构说明、接口清单、6 份 ADR | ✅ 已冻结（`v0.0.1`） |
 | 工程配置 | CI、Issue/PR 模板、CODEOWNERS、分支规范 | ✅ 已生效，CI 绿灯 |
 | 任务拆分 | [14 个 Issue](https://github.com/encoY3332333/transparent-umbrella/issues?q=is%3Aissue) 分入 5 个 Milestone，共 92 人时 | ✅ 已创建 |
-| 代码 | `backend/` 应用脚手架（FastAPI + Jinja2 单体） | ⬜ 从 [Issue #1](https://github.com/encoY3332333/transparent-umbrella/issues/1) 开始 |
+| 代码 | `backend/` 应用脚手架（FastAPI + Jinja2 单体） | ✅ 已跑通（Issue #1） |
 
 - 版本发布：[`v0.0.1`](https://github.com/encoY3332333/transparent-umbrella/releases/tag/v0.0.1)（pre-release，仅文档与配置）
 - 任务看板：[Issues](https://github.com/encoY3332333/transparent-umbrella/issues) · [Milestones](https://github.com/encoY3332333/transparent-umbrella/milestones)
@@ -65,9 +65,11 @@ SmartTrip 把这些重复劳动自动化。用户只需输入少量条件，系�
 
 ## 快速开始
 
-> ⚠️ **当前版本 v0.0.1，代码尚未初始化**（前后端目录为空）。以下为约定好的启动方式，脚手架（Issue #1）落地后即可执行。
+> ✅ **当前版本 v0.1.0-alpha：工程骨架已跑通**。健康检查、首页、静态资源、Alembic 基线迁移、
+> 统一错误响应、外部调用代理基类与测试全部就位，CI 里 `Backend (Python 3.11)` 与
+> `Templates (Jinja2)` 两个 job 已由「跳过」变为「真实执行」。
 >
-> 此刻仓库里可用的东西是：需求基线、架构与接口契约、14 个可开工的 Issue、CI 与协作配置。详见 [Release v0.0.1](./docs/release-notes/v0.0.1.md)。
+> 业务功能（登录、条件录入、行程生成……）按 [14 个 Issue](https://github.com/encoY3332333/transparent-umbrella/issues) 逐步落地。
 
 ### 环境要求
 
@@ -98,7 +100,8 @@ uvicorn app.main:app --reload --port 8000
 
 打开 http://localhost:8000 即可访问。接口文档在 http://localhost:8000/docs（FastAPI 自动生成，与 `docs/api.md` 同源）。
 
-> 首次启动会自动建 SQLite 文件并从 `app/seed/` 导入演示 POI 数据；切换到 MySQL 只需把 `.env` 里的 `DATABASE_URL` 改成 `mysql+pymysql://...` 后重新执行 `alembic upgrade head`。
+> 首次启动会自动创建 SQLite 文件；切换到 MySQL 只需把 `.env` 里的 `DATABASE_URL` 改成 `mysql+pymysql://...` 并 `pip install -e ".[mysql]"`，再执行一次 `alembic upgrade head`。
+> 演示 POI 数据在 `backend/app/seed/pois.json`，由 Issue #12 的数据导入脚本读入（当前尚未接入）。
 
 ### 常用命令
 
@@ -115,7 +118,7 @@ python ../scripts/check-templates.py   # 检查 Jinja2 模板语法与静态资�
 
 | 角色 | 账号 | 密码 |
 |---|---|---|
-| 游客 | （脚手架落地后补充） | — |
+| 游客 | 手机号 + 短信验证码（开发环境固定 `123456`），登录功能在 Issue #2 落地 | — |
 | 运营管理员 | `admin` | 见 `.env` 中的 `ADMIN_INIT_PASSWORD` |
 
 ## 项目结构
@@ -134,8 +137,10 @@ transparent-umbrella/
 │   ├── pull_request_template.md
 │   ├── CODEOWNERS               路径 → 负责人映射
 │   └── BRANCH_PROTECTION.md     组长手动配置清单（分支保护 / Labels / Milestones）
-├── backend/                     Python 应用（Issue #1 创建）
+├── docker-compose.yml           演示环境：MySQL 8 + web（开发不用它）
+├── backend/                     Python 应用（Issue #1 已落地）
 │   ├── pyproject.toml           依赖与工具配置（Ruff / Mypy / Pytest 均在此）
+│   ├── Dockerfile               演示镜像：python:3.11-slim + uvicorn
 │   ├── alembic.ini              数据库迁移配置
 │   ├── app/
 │   │   ├── main.py              应用入口，挂载路由与中间件
@@ -154,7 +159,7 @@ transparent-umbrella/
 ├── docs/
 │   ├── srs/                     软件需求规格说明书（基线 V1.0）+ 基线管理说明
 │   ├── architecture.md          架构说明（分层、数据流、ADR 索引）
-│   ├── api.md                   接口清单（9 个用例、39 个错误码）
+│   ├── api.md                   接口清单（9 个用例、30 个错误码）
 │   ├── diagrams/                UML 图源文件（PlantUML）：用例图 / 9 张顺序图 / 类图 / 3 张状态图
 │   ├── adr/                     架构决策记录（ADR-001 ~ 007）
 │   ├── issues/                  14 个 Issue 的完整正文

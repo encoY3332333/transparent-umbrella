@@ -5,6 +5,24 @@
 
 ## [Unreleased]
 
+### Added
+
+- **工程脚手架落地（Issue #1）：`backend/` 从空目录变为可运行的 FastAPI 单体应用**
+  - `pyproject.toml`：依赖 + Ruff / Mypy / Pytest / Coverage 五套工具配置集中一处
+  - `app/main.py`：应用工厂 `create_app()`、静态资源挂载、traceId 中间件、统一异常处理
+  - `app/core/`：`config.py`（pydantic-settings，字段与 `.env.example` 一一对应）、`errors.py`（30 个错误码 + `BusinessError`）、`handlers.py`、`security.py`（JWT + HMAC 分享令牌）、`db.py`、`deps.py`、`logging.py`
+  - `app/api/`：`health.py`（`GET /api/health`）、`pages.py`（`GET /` 服务端渲染）、`router.py`
+  - `app/adapters/base.py`：外部调用统一封装——超时 / 重试 / TTL 缓存 / 降级标记 / BR-10 调用计数
+  - `app/templates/`：`base.html` + `index.html`；`app/static/`：本地化 HTMX 2.0.4 与 Alpine.js 3.14.5（不引 CDN）
+  - `alembic.ini` + `migrations/`：迁移链路可用，连接串从 `Settings` 读取；基线版本 `0001`
+  - `tests/`：7 个测试文件，覆盖配置、错误码、令牌、适配器、数据库与页面
+  - `docker-compose.yml` + `backend/Dockerfile` + `docs/docker/mysql-init.sql`：演示环境一条命令起 MySQL 8 + web
+- `docs/adr/ADR-007-switch-to-python-stack.md`：技术栈切换的决策记录，含被否决的三个方案与切换代价
+- `scripts/check-templates.py`：Jinja2 模板编译与静态资源引用检查，接入 CI（默认路径改为按仓库根解析，任意目录执行都可用）
+- `scripts/render-diagrams.py`：PlantUML 批量渲染脚本（此前为手动命令）
+- `docs/reports/`：项目进展报告入库
+- `docs/assessment-checklist.md`：A1–A8 / B1–B7 逐项自查表
+
 ### Changed
 
 - **技术栈整体切换为 Python**（ADR-007）
@@ -18,19 +36,11 @@
 - ADR-001 补充复核节：JWT 载体由 `Authorization` 头改为 HttpOnly Cookie（跨域约束消失后，顺带消除 localStorage 的 XSS 风险）
 - 14 个 Issue 的技术备注、`docs/architecture.md` 的分层与包结构、`.env.example`、README 快速开始同步改写
 - `.gitignore` 移除 Java/Maven/Node 规则，新增 Python 规则（`__pycache__`、`.venv`、`.pytest_cache`、`*.db` 等）
-
-### Added
-
-- `docs/adr/ADR-007-switch-to-python-stack.md`：技术栈切换的决策记录，含被否决的三个方案与切换代价
-- `scripts/check-templates.py`：Jinja2 模板编译与静态资源引用检查，接入 CI
-- `scripts/render-diagrams.py`：PlantUML 批量渲染脚本（此前为手动命令）
-- `docs/reports/`：项目进展报告入库
-- `docs/assessment-checklist.md`：A1–A8 / B1–B7 逐项自查表
+- `docs/api.md` 与脚手架对齐：健康检查由 `/actuator/health` 改为 `/api/health`、分页示例统一从 `page=1` 起、错误码数量校正为 30
 
 ### 计划中
 
-- 工程脚手架：Python 3.11 + FastAPI + Jinja2/HTMX 单体应用（#1）
-- CI 流水线与分支保护（#14）
+- 分支保护必需检查重新勾选、组员 2 邀请、Issue 指派（#14）
 - UC-01 游客登录与偏好建档（#2）
 - UC-02 出行条件录入与校验（#3）
 - UC-04 行程结果页（#8）
