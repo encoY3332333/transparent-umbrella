@@ -19,7 +19,7 @@
 | 酒店服务 | 住宿均价 | 是 |
 | 认证服务 | 短信验证码 | 是 |
 
-前端需要展示"天气图标""通勤时间""拥挤度标签"，最直接的做法是前端 axios 直接请求第三方。
+页面需要展示"天气图标""通勤时间""拥挤度标签"，最直接的做法是浏览器端直接用 `fetch` 请求第三方。
 
 ## 备选方案
 
@@ -34,7 +34,7 @@
 
 ### 方案 B：服务端代理（Adapter 层统一封装）
 
-后端建 `external/` 包，每个外部系统一个 `XxxServerAdapter`，对外暴露**业务语义方法**（`getForecast(city, dateRange)`），内部负责 HTTP 调用、鉴权、超时、重试、缓存、降级。业务层（Manager / Engine）只依赖 Adapter 接口。
+后端建 `app/adapters/` 包，每个外部系统一个 `XxxAdapter` 子类（继承 `base.BaseAdapter`），对外暴露**业务语义方法**（`get_forecast(city, date_range)`），内部负责 HTTP 调用、鉴权、超时、重试、缓存、降级。业务层（`services/` / `engine/`）只依赖 Adapter 的抽象方法。
 
 - 优点：
   - 密钥只在服务端环境变量
@@ -52,27 +52,27 @@
 
 ## 决策
 
-**采用方案 B：服务端 Adapter 代理。** 所有外部调用**只能**出现在 `com.smarttrip.external` 包内，业务层禁止直接使用 `RestTemplate` / `WebClient` / `HttpClient`。
+**采用方案 B：服务端 Adapter 代理。** 所有外部调用**只能**出现在 `backend/app/adapters/` 包内，`services/` 与 `api/` 禁止直接 `import httpx` 或 `requests`。
 
 ## 理由
 
 1. **方案 A 违反 SRS 4.4 安全要求，直接排除**。这不是取舍问题，是合规问题。
 2. **BR-10（外部调用 ≤ 60 次）只有方案 B 能落地**。需要在一个请求的生命周期内累加计数，超出则抛业务异常并降级。这个计数器必须有一个统一入口，前端的散落调用和方案 C 的独立服务都会让计数变复杂。
-3. **降级策略（`architecture.md` 6.2）本质上是 Adapter 层的职责**。天气服务挂了要返回 `UNKNOWN` 而不是抛异常——这个判断逻辑必须紧贴调用点，放在 Manager 层会让业务代码被 try-catch 淹没。
+3. **降级策略（`architecture.md` 6.2）本质上是 Adapter 层的职责**。天气服务挂了要返回 `UNKNOWN` 而不是抛异常——这个判断逻辑必须紧贴调用点，放在 `services/` 会让业务代码被 `try/except` 淹没。
 4. **方案 C 的成本不划算**。它的好处（依赖隔离）在三人项目中体现不出来，成本（多一个服务、多一份 CI、多一份文档）却立刻要付。
-5. **测试友好性是加分项**。方案 B 的 Adapter 是接口，`#5` `#6` 写单测时直接 `@MockBean` 掉人流量服务，测试不依赖网络，CI 稳定。
+5. **测试友好性是加分项**。方案 B 的 Adapter 是抽象基类，`#5` `#6` 写单测时用 `monkeypatch` 或 FastAPI 的 `dependency_overrides` 把 `TrafficAdapter` 换成假实现，测试不依赖网络，CI 稳定。
 
 ## 影响
 
 - **正面**：
   - 密钥零暴露，`.env` 已在 `.gitignore` 中排除
   - 外部调用预算可精确控制，超限可降级
-  - 所有 Mock 点收敛在 `external/` 一个包，测试编写成本低
+  - 所有 Mock 点收敛在 `adapters/` 一个包，测试编写成本低
 - **负面**：
-  - **Adapter 是单点**。某个 Adapter 的实现 bug 会同时影响所有用到它的功能。缓解：每个 Adapter 必须有独立单测（Mock HTTP 层），CI 覆盖率对 `external/` 包单独设 60% 门槛
-  - 后端代码量增加约 7 个类 × 100 行
-  - 多一跳网络延迟（内网转发，可忽略）
+  - **Adapter 是单点**。某个 Adapter 的实现 bug 会同时影响所有用到它的功能。缓解：每个 Adapter 必须有独立单测（Mock HTTP 层），CI 覆盖率对 `adapters/` 包单独设 60% 门槛
+  - 代码量增加约 7 个模块 × 80 行
+  - 多一跳转发（同进程内，无网络延迟）
 - **后续动作**：
-  - `#1` 落地时创建空的 Adapter 接口与 OSS（对象存储）/ HTTP 客户端配置
+  - `#1` 落地时创建 `adapters/base.py`（超时、重试、缓存、降级、调用计数的统一封装）与空的 Adapter 子类
   - Code Review 检查项新增一条：**业务层是否出现了 HTTP 调用**（`CONTRIBUTING.md` 第 8 章 Code Review 6 维度表中"分层合规"一项）
   - 缓存策略：地图通勤矩阵缓存 1 小时，天气缓存 30 分钟，人流量缓存 24 小时（历史数据，变化慢），具体 TTL 在 `#5` `#6` 落地时确认

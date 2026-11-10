@@ -27,7 +27,7 @@ UC-03「生成行程」是全系统的技术核心，SRS 里预估工作量约 2
 
 ### 方案 C：先定接口契约（空壳实现 + 单测骨架），再并行填实现
 
-1. 由 #4 的负责人先提交一份 `StrategyEngine` 的**接口 + DTO + 空实现（抛 `UnsupportedOperationException`）+ 单测骨架（全部 `@Disabled`）**
+1. 由 #4 的负责人先提交一份 `engine/` 的**协议（`typing.Protocol`）+ dataclass + 空实现（抛 `NotImplementedError`）+ 单测骨架（全部 `@pytest.mark.skip`）**
 2. 合并后，三人各自在独立分支上填自己那块的实现和测试，彼此**不需要再看对方的实现代码**
 3. 每块独立通过单测后，再在 #6 里做集成
 
@@ -42,7 +42,7 @@ UC-03「生成行程」是全系统的技术核心，SRS 里预估工作量约 2
 
 | 子模块 | Issue | 职责 | 工时 |
 |---|---|---|---|
-| 编排入口 + 接口契约定稿 | #4 | `PlanManager`、DTO、`StrategyEngine` 接口空壳、依赖装配、Controller | 6h |
+| 编排入口 + 接口契约定稿 | #4 | `PlanService`、schema、`engine` 协议空壳、依赖装配、路由 | 6h |
 | 候选筛选 + 拥挤度计算 | #5 | `CandidateSelector`、`CrowdIndexCalculator`、人流量 Adapter 对接 | 8h |
 | 排程算法核心 | #6 | `ScoreCalculator`、贪心装箱、`FeasibilityChecker`、多方案生成 | 10h |
 | 预算迭代 | #7 | `BudgetCalculator`、`BudgetIterator`、超预算降本策略 | 6h |
@@ -59,11 +59,11 @@ UC-03「生成行程」是全系统的技术核心，SRS 里预估工作量约 2
 - **正面**：
   - 三个人都能拿到核心链路的代码贡献，A3 与 B2 评分均衡
   - 接口契约本身成为 Code Review 的检查依据
-  - `StrategyEngine` 的输入是领域对象而非 Entity，单测不需要起 Spring 上下文，测试跑得快
+  - `engine` 的输入是纯 dataclass 而非 ORM 实体，单测不需要建数据库连接，测试跑得快
 - **负面**：
   - **#5 / #6 / #7 全部被 #4 阻塞**，串行等待 #4 合并后才能开工。缓解：#4 只做契约和空壳，不做实现，力争 1–2 天内合入
   - 接口设计不当会三人返工。缓解：#4 的 PR 必须三个人都 Approve，且评审时专门检查"这个签名能否支撑后续三块实现"
 - **后续动作**：
-  - #4 的 PR 描述里必须贴出 `StrategyEngine` 完整签名与三个核心 DTO 的字段表
+  - #4 的 PR 描述里必须贴出 `engine` 协议完整签名与三个核心 dataclass 的字段表
   - 接口变更走**新 Issue + 通知另外两人**，不允许在实现分支里偷偷改签名
   - 集成测试放在 #6，覆盖"候选 → 评分 → 装箱 → 预算"的完整链路

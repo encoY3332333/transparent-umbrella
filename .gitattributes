@@ -1,0 +1,38 @@
+# 统一换行符：仓库内一律 LF，避免 Windows 开发 / Ubuntu CI 之间出现
+# 「本地能跑、CI 报 bad interpreter」这类问题。
+* text=auto eol=lf
+
+# 明确指定文本文件
+*.md      text eol=lf
+*.py      text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.json    text eol=lf
+*.toml    text eol=lf
+*.puml    text eol=lf
+*.html    text eol=lf
+*.css     text eol=lf
+*.js      text eol=lf
+*.sql     text eol=lf
+*.txt     text eol=lf
+*.example text eol=lf
+.gitignore     text eol=lf
+.gitattributes text eol=lf
+
+# 二进制文件：不做换行转换、不做 diff
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.docx  binary
+*.xlsx  binary
+*.pptx  binary
+*.jar   binary
+*.zip   binary
+*.bundle binary
+
+# 导出/生成的产物在 diff 中不展示内容
+coverage.xml  linguist-generated=true
+docs/diagrams/png/*.png  linguist-generated=true

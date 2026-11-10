@@ -29,6 +29,7 @@
 | [ADR-004](./ADR-004-server-side-proxy.md) | 外部数据全部走服务端代理 | 已采纳 | 2026-11-09 |
 | [ADR-005](./ADR-005-adjust-on-copy.md) | 行程调整在副本上执行，确认后覆盖 | 已采纳 | 2026-11-09 |
 | [ADR-006](./ADR-006-crowd-index-statistical.md) | 拥挤度用统计模型，不用机器学习 | 已采纳 | 2026-11-09 |
+| [ADR-007](./ADR-007-switch-to-python-stack.md) | 技术栈整体切换为 Python（FastAPI + Jinja2） | 已采纳 | 2026-11-10 |
 
 ## 状态说明
 
