@@ -48,7 +48,7 @@
 | 3 | ↳ Dismiss stale pull request approvals when new commits are pushed | 启用 | [ ] |
 | 4 | ↳ Require review from Code Owners | 启用（CODEOWNERS 填好后） | [ ] |
 | 5 | Require status checks to pass | 启用 | [ ] |
-| 6 | ↳ 选择状态检查 | `Backend (Java 17)`、`Frontend (Node 22)`、`CI Summary` | [ ] |
+| 6 | ↳ 选择状态检查 | `Backend (Python 3.11)`、`Templates (Jinja2)`、`CI Summary` | [ ] |
 | 7 | Require conversation resolution before merging | 启用 | [ ] |
 | 8 | Block force pushes | 启用 | [ ] |
 | 9 | Restrict deletions | 启用 | [ ] |
