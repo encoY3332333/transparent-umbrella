@@ -18,8 +18,8 @@
 - [ ] 后端：保存当时的 `StrategyParameter.version` 快照，用于归因分析
 - [ ] 后端：同一行程 24 小时内重复提交按「覆盖更新」处理，不重复计分
 - [ ] 页面：`templates/feedback/form.html` 星级评分 + 标签多选 + 文本框（带字数统计，字符数用 Alpine.js 实时显示）
-- [ ] 前端：未选满意度时提交按钮禁用
-- [ ] 测试：`FeedbackServiceTest` 覆盖必填校验、字数边界、敏感词、快照保存、24 小时覆盖
+- [ ] 页面：未选满意度时提交按钮禁用
+- [ ] 测试：`tests/test_feedback.py` 覆盖必填校验、字数边界、敏感词、快照保存、24 小时覆盖
 
 ## 验收标准 / Acceptance Criteria
 
