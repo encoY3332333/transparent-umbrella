@@ -155,14 +155,15 @@ jobs:
       - name: Check commit messages
         run: |
           BASE="origin/${{ github.base_ref }}"
-          git fetch origin "${{ github.base_ref }}" --depth=1 || true
+          # 必须取完整历史：用 --depth=1 会把 origin/main 变成没有父提交的浅提交，
+          # 于是 main..HEAD 会把整部历史都算成「本 PR 的提交」（连 Initial commit 一起）。
+          git fetch --no-tags origin "+refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}" || true
           if ! git rev-parse --verify --quiet "$BASE" > /dev/null; then
             echo "::error::取不到基线分支 $BASE，无法校验提交信息"
             exit 1
           fi
           # 只校验本 PR 新增的提交；范围为空说明没有新提交，直接通过。
-          # 不要在这里回退到「最近 20 条」——那会把历史提交（含仓库初始化时的
-          # Initial commit）拉进来，让所有人都卡在一个改不掉的失败上。
+          # 不要回退到「最近 20 条」——那会把历史提交拉进来，让所有人卡在一个改不掉的失败上。
           COMMITS=$(git log --no-merges --format=%s "$BASE..HEAD")
           if [ -z "$COMMITS" ]; then
             echo "本 PR 没有新增提交，跳过提交信息校验"
