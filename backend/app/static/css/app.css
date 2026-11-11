@@ -186,6 +186,103 @@ main { padding: 32px 0 48px; }
 .steps { margin: 0; padding-left: 20px; }
 .steps li { margin-bottom: 6px; }
 
+/* ---------------- 出行条件表单 ---------------- */
+.form-card { padding: 22px; }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.field > span { color: var(--muted); }
+
+.field input,
+.field select {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.field input:focus,
+.field select:focus {
+  outline: 2px solid var(--brand-soft);
+  border-color: var(--brand);
+}
+
+.tags-field {
+  margin: 18px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.tags-field legend {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.tag-list { display: flex; flex-wrap: wrap; gap: 10px 16px; }
+
+.tag-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 13px;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.error-box,
+.result-box {
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.error-box {
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #9f1239;
+}
+
+.error-box ul { margin: 6px 0 0; padding-left: 20px; }
+
+.result-box {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+}
+
+.result-box h2 { margin: 0 0 4px; font-size: 16px; }
+.result-box .kv { margin-top: 10px; }
+.warning-line { margin: 10px 0 0; color: #92400e; }
+
+@media (max-width: 640px) {
+  .form-grid { grid-template-columns: 1fr; }
+}
+
 a { color: var(--brand); }
 
 code {
