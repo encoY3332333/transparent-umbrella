@@ -58,7 +58,7 @@
 - 预估工作量：4 小时
 - Labels：`ci` `backend` `frontend` `P0`
 - Milestone：`M0-工程启动`
-- Assignee：【组长】
+- Assignee：@richkoijx
 - 分支：`feature/1-project-init`
 
 ## 技术备注
