@@ -50,7 +50,10 @@ def create_access_token(
 def decode_access_token(
     token: str, settings: Settings, *, now: datetime | None = None
 ) -> dict[str, Any]:
-    """校验签名与有效期，返回 payload。失败一律抛 `TokenError`。"""
+    """校验签名与有效期，返回 payload。失败一律抛 `TokenError`。
+
+    `now` 显式参与 exp 校验，便于测试固定时钟，也避免长跑进程依赖系统时钟漂移。
+    """
     if not token:
         raise TokenError("empty token")
     try:
@@ -58,18 +61,20 @@ def decode_access_token(
             token,
             settings.jwt_secret,
             algorithms=[settings.jwt_algorithm],
-            options={"require": ["exp", "sub"]},
+            options={"require": ["exp", "sub"], "verify_exp": False},
             leeway=0,
         )
-    except jwt.ExpiredSignatureError as exc:
-        raise TokenError("token expired") from exc
+        expires_at = payload.get("exp")
+        current = now or datetime.now(UTC)
+        if not isinstance(expires_at, (int, float)) or expires_at <= current.timestamp():
+            raise TokenError("token expired")
     except jwt.InvalidTokenError as exc:
         raise TokenError("invalid token") from exc
     return payload
 
 
-def tourist_id_from_token(token: str, settings: Settings) -> int:
-    payload = decode_access_token(token, settings)
+def tourist_id_from_token(token: str, settings: Settings, *, now: datetime | None = None) -> int:
+    payload = decode_access_token(token, settings, now=now)
     try:
         return int(payload["sub"])
     except (KeyError, TypeError, ValueError) as exc:

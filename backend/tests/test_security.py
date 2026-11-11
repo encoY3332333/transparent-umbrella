@@ -31,7 +31,7 @@ def test_access_token_roundtrip(settings: Settings) -> None:
     token, expires_in = create_access_token(1001, settings, now=FIXED_NOW)
 
     assert expires_in == settings.jwt_expire_minutes * 60
-    assert tourist_id_from_token(token, settings) == 1001
+    assert tourist_id_from_token(token, settings, now=FIXED_NOW) == 1001
 
 
 def test_access_token_rejects_other_secret(settings: Settings) -> None:
