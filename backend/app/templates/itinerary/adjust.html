@@ -79,6 +79,16 @@
   const undoStack = [];
   const redoStack = [];
 
+  function activityCost() {
+    return Array.from(daysRoot.querySelectorAll(".activity-card")).reduce(
+      (sum, card) => sum + Number(card.dataset.cost || 0),
+      0
+    );
+  }
+
+  // 交通/住宿等固定成本不在卡片上，先用“初始预计花费 - 初始活动费用”反推。
+  const fixedCost = Number(estimatedNode.textContent.replace(/[^\d.]/g, "")) - activityCost();
+
   function snapshot() {
     daysRoot.querySelectorAll("[data-lock]").forEach(function (checkbox) {
       checkbox.toggleAttribute("checked", checkbox.checked);
@@ -87,10 +97,7 @@
   }
 
   function updateBudget() {
-    const estimated = Array.from(daysRoot.querySelectorAll(".activity-card")).reduce(
-      (sum, card) => sum + Number(card.dataset.cost || 0),
-      0
-    );
+    const estimated = fixedCost + activityCost();
     const remaining = total - estimated;
     estimatedNode.textContent = "¥" + estimated.toFixed(0);
     remainingNode.textContent = "¥" + remaining.toFixed(0);
