@@ -51,7 +51,7 @@
 - 预估工作量：6 小时
 - Labels：`feature` `backend` `P0`
 - Milestone：`v0.1.0 Alpha`
-- Assignee：【组长】
+- Assignee：@encoY3332333
 - 分支：`feature/7-budget-iteration`
 - 涉及业务规则：BR-11、BR-06–BR-09
 
