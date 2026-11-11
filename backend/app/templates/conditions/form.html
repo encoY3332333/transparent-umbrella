@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}出行条件{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">UC-02 · INPUT TRAVEL CONDITIONS</p>
+  <h1>先告诉 SmartTrip：你想怎么走</h1>
+  <p class="lede">
+    填写出发地、目的地、日期、预算和偏好。提交后服务端会按 SRS 的
+    BR-03 ~ BR-09 校验，并返回天数、城市坐标与预算拆分提示。
+  </p>
+</section>
+
+{% if errors %}
+<div class="error-box" role="alert">
+  <strong>条件没有通过校验：</strong>
+  <ul>
+    {% for error in errors %}<li>{{ error }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if result %}
+<div class="result-box">
+  <h2>条件可用：{{ result.days }} 天行程</h2>
+  <p class="muted">
+    {{ result.resolved.origin.city }} → {{ result.resolved.dest.city }} ·
+    预算拆分约 {{ "%.2f"|format(result.budgetBreakdownHint.perDay) }} 元/天 ·
+    {{ "%.2f"|format(result.budgetBreakdownHint.perPersonPerDay) }} 元/人/天
+  </p>
+  <dl class="kv">
+    <dt>出发坐标</dt>
+    <dd>{{ "%.4f"|format(result.resolved.origin.lat) }}, {{ "%.4f"|format(result.resolved.origin.lng) }}</dd>
+    <dt>目的坐标</dt>
+    <dd>{{ "%.4f"|format(result.resolved.dest.lat) }}, {{ "%.4f"|format(result.resolved.dest.lng) }}</dd>
+  </dl>
+  {% if result.warnings %}
+  <p class="warning-line">
+    提示：
+    {% for warning in result.warnings %}
+      {% if warning == "BUDGET_TIGHT" %}预算偏紧，建议预留弹性{% else %}{{ warning }}{% endif %}{% if not loop.last %}；{% endif %}
+    {% endfor %}
+  </p>
+  {% endif %}
+</div>
+{% endif %}
+
+<form class="card form-card" method="post" action="/conditions/validate">
+  <div class="form-grid">
+    <label class="field">
+      <span>出发城市</span>
+      <input name="originCity" value="{{ form.get('originCity', '') }}" required maxlength="50"
+             placeholder="例如：杭州">
+    </label>
+    <label class="field">
+      <span>目的城市</span>
+      <input name="destCity" value="{{ form.get('destCity', '') }}" required maxlength="50"
+             placeholder="例如：西安">
+    </label>
+    <label class="field">
+      <span>开始日期</span>
+      <input type="date" name="startDate" value="{{ form.get('startDate', '') }}" required>
+    </label>
+    <label class="field">
+      <span>结束日期</span>
+      <input type="date" name="endDate" value="{{ form.get('endDate', '') }}" required>
+    </label>
+    <label class="field">
+      <span>总预算（元）</span>
+      <input type="number" name="budget" value="{{ form.get('budget', '') }}"
+             min="500" max="200000" step="0.01" required>
+    </label>
+    <label class="field">
+      <span>出行人数</span>
+      <input type="number" name="partySize" value="{{ form.get('partySize', '') }}"
+             min="1" max="20" step="1" required>
+    </label>
+    <label class="field">
+      <span>同行构成</span>
+      <select name="partyType">
+        {% for value, label in [('SOLO', '独自出行'), ('COUPLE', '情侣/伴侣'), ('FAMILY', '家庭'), ('FRIENDS', '朋友结伴')] %}
+        <option value="{{ value }}" {% if form.get('partyType') == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>必去 POI ID（逗号分隔，可空）</span>
+      <input name="mustVisit" value="{{ form.get('mustVisit', '') }}" placeholder="205,218">
+    </label>
+    <label class="field">
+      <span>必避 POI ID（逗号分隔，可空）</span>
+      <input name="avoidPOI" value="{{ form.get('avoidPOI', '') }}" placeholder="310">
+    </label>
+  </div>
+
+  <fieldset class="tags-field">
+    <legend>偏好标签（最多 6 个）</legend>
+    <div class="tag-list">
+      {% set selected_tags = form.get('preferenceTags', []) %}
+      {% for tag in ['人文历史', '自然风光', '亲子', '美食', '摄影', '夜生活'] %}
+      <label class="tag-item">
+        <input type="checkbox" name="preferenceTags" value="{{ tag }}"
+               {% if tag in selected_tags %}checked{% endif %}>
+        <span>{{ tag }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  <div class="form-actions">
+    <button class="btn" type="submit">校验条件</button>
+    <a class="btn btn-ghost" href="/">返回首页</a>
+    <span class="muted">城市坐标当前使用内置演示表，真实地图接口后续接入。</span>
+  </div>
+</form>
+{% endblock %}
