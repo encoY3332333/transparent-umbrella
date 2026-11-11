@@ -50,9 +50,15 @@ def create_access_token(
 def decode_access_token(
     token: str, settings: Settings, *, now: datetime | None = None
 ) -> dict[str, Any]:
-    """校验签名与有效期，返回 payload。失败一律抛 `TokenError`。"""
+    """校验签名与有效期，返回 payload。失败一律抛 `TokenError`。
+
+    `now` 同时用于签名校验和 `exp` 比较。之前漏传给 `jwt.decode`，
+    导致 PyJWT 用真实系统时间判定过期，与本函数的时间基准不一致——
+    测试里传固定时间就会出现「签发即过期」。
+    """
     if not token:
         raise TokenError("empty token")
+    current = _now(now)
     try:
         payload: dict[str, Any] = jwt.decode(
             token,
@@ -60,6 +66,7 @@ def decode_access_token(
             algorithms=[settings.jwt_algorithm],
             options={"require": ["exp", "sub"]},
             leeway=0,
+            now=current,
         )
     except jwt.ExpiredSignatureError as exc:
         raise TokenError("token expired") from exc
@@ -68,8 +75,10 @@ def decode_access_token(
     return payload
 
 
-def tourist_id_from_token(token: str, settings: Settings) -> int:
-    payload = decode_access_token(token, settings)
+def tourist_id_from_token(
+    token: str, settings: Settings, *, now: datetime | None = None
+) -> int:
+    payload = decode_access_token(token, settings, now=now)
     try:
         return int(payload["sub"])
     except (KeyError, TypeError, ValueError) as exc:
