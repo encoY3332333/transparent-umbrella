@@ -31,7 +31,8 @@ def test_access_token_roundtrip(settings: Settings) -> None:
     token, expires_in = create_access_token(1001, settings, now=FIXED_NOW)
 
     assert expires_in == settings.jwt_expire_minutes * 60
-    assert tourist_id_from_token(token, settings) == 1001
+    # 必须传 now：否则 PyJWT 拿真实系统时间去比 exp，测试会随日历推移而失败
+    assert tourist_id_from_token(token, settings, now=FIXED_NOW) == 1001
 
 
 def test_access_token_rejects_other_secret(settings: Settings) -> None:
@@ -63,6 +64,28 @@ def test_expired_token_is_rejected(settings: Settings) -> None:
 
     with pytest.raises(TokenError):
         decode_access_token(token, settings, now=FIXED_NOW)
+
+
+def test_decode_honours_injected_now(settings: Settings) -> None:
+    """`now` 必须真正参与 exp 判定，而不是被忽略后回落到系统时间。
+
+    构造一个「相对 FIXED_NOW 已过期」的令牌：若不注入 now，测试结果会随
+    真实日历漂移；注入后与日历无关。
+    """
+    issued = FIXED_NOW - timedelta(minutes=settings.jwt_expire_minutes + 1)
+    token, _ = create_access_token(1001, settings, now=issued)
+
+    with pytest.raises(TokenError):
+        decode_access_token(token, settings, now=FIXED_NOW)
+
+
+def test_decode_accepts_token_valid_at_injected_now(settings: Settings) -> None:
+    """反向用例：按注入时间仍在有效期内，应正常解出 payload。"""
+    token, _ = create_access_token(1001, settings, now=FIXED_NOW)
+
+    payload = decode_access_token(token, settings, now=FIXED_NOW + timedelta(seconds=30))
+
+    assert payload["sub"] == "1001"
 
 
 def test_share_token_roundtrip(settings: Settings) -> None:
