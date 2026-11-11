@@ -175,8 +175,15 @@
     if (!checkbox) return;
     const card = cardOf(checkbox);
     if (!card) return;
+
+    // change 事件触发时 checked 已经变了；先临时还原旧状态，保证撤销能回到操作前。
+    const next = checkbox.checked;
+    const previous = !next;
+    checkbox.checked = previous;
+    card.dataset.locked = previous ? "true" : "false";
     pushHistory();
-    card.dataset.locked = checkbox.checked ? "true" : "false";
+    checkbox.checked = next;
+    card.dataset.locked = next ? "true" : "false";
   });
 
   undoButton.addEventListener("click", undo);
