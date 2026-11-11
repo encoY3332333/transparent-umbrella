@@ -8,6 +8,7 @@
     {% for activity in day.activities %}
     <div class="activity-card"
          data-activity-id="{{ activity.id }}"
+         data-cost="{{ activity.cost }}"
          data-locked="{{ 'true' if activity.locked else 'false' }}">
       <div class="activity-time">{{ activity.time }}</div>
       <div class="activity-main">
@@ -15,12 +16,12 @@
         <div class="activity-meta">{{ activity.category }} · ¥{{ "%.0f"|format(activity.cost) }}</div>
       </div>
       <div class="activity-actions" aria-label="活动操作">
-        <button type="button" class="icon-btn" title="上移（接口接入后启用）" disabled>↑</button>
-        <button type="button" class="icon-btn" title="下移（接口接入后启用）" disabled>↓</button>
-        <button type="button" class="icon-btn" title="替换（接口接入后启用）" disabled>换</button>
-        <button type="button" class="icon-btn danger" title="删除（接口接入后启用）" disabled>删</button>
+        <button type="button" class="icon-btn" data-action="move-up" title="上移">↑</button>
+        <button type="button" class="icon-btn" data-action="move-down" title="下移">↓</button>
+        <button type="button" class="icon-btn" data-action="replace" title="替换（接口接入后启用）">换</button>
+        <button type="button" class="icon-btn danger" data-action="delete" title="删除">删</button>
         <label class="lock-toggle">
-          <input type="checkbox" {% if activity.locked %}checked{% endif %} disabled>
+          <input type="checkbox" data-lock {% if activity.locked %}checked{% endif %}>
           锁定
         </label>
       </div>

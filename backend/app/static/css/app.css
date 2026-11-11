@@ -240,6 +240,20 @@ code {
 .budget-strip > div { display: flex; flex-direction: column; gap: 2px; }
 .budget-strip strong { font-size: 17px; }
 
+.adjust-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.adjust-toolbar .btn { padding: 5px 10px; font-size: 13px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.budget-negative { color: #b91c1c; }
+
 .adjust-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 280px;
