@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}行程调整{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">UC-05 · ADJUST ITINERARY</p>
+  <h1>行程调整</h1>
+  <p class="lede">
+    对已生成的方案做局部调整：上移/下移、替换、删除、锁定必去项后重排。
+    当前为页面骨架，按钮会在 #9 的后续提交中接入 preview 与保存接口。
+  </p>
+</section>
+
+<div class="validation-bar" data-status="ok" role="status">
+  <strong>当前方案无冲突</strong>
+  <span>时间、预算与天气约束均通过；保存前会再次校验。</span>
+</div>
+
+<div class="budget-strip">
+  <div>
+    <span class="muted">总预算</span>
+    <strong>¥{{ "%.0f"|format(itinerary.budget) }}</strong>
+  </div>
+  <div>
+    <span class="muted">预计花费</span>
+    <strong>¥{{ "%.0f"|format(itinerary.estimated_cost) }}</strong>
+  </div>
+  <div>
+    <span class="muted">剩余</span>
+    <strong>¥{{ "%.0f"|format(itinerary.budget - itinerary.estimated_cost) }}</strong>
+  </div>
+</div>
+
+<div class="adjust-layout">
+  <section class="adjust-days" aria-label="按天行程">
+    {% for day in itinerary.days %}
+      {% include "itinerary/_day_column.html" %}
+    {% endfor %}
+  </section>
+
+  <aside class="adjust-side">
+    <div class="card">
+      <h2>调整说明</h2>
+      <ul class="steps">
+        <li>带“锁定”的活动在重排中保持原位。</li>
+        <li>删除或替换后，只重算受影响活动相邻两项的通勤。</li>
+        <li>保存会生成新版本，历史最多保留 10 个。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>保存</h2>
+      <p class="muted">接口接入前按钮不可用；当前页面用于评审布局与交互位置。</p>
+      <button class="btn" type="button" disabled>保存调整</button>
+      <a class="btn btn-ghost" href="/itineraries/{{ itinerary.id }}">取消</a>
+    </div>
+  </aside>
+</div>
+{% endblock %}

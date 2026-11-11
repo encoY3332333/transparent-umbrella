@@ -1,0 +1,30 @@
+<article class="day-column" data-day="{{ day.day }}">
+  <header class="day-header">
+    <span class="day-index">Day {{ day.day }}</span>
+    <time class="day-date">{{ day.date }}</time>
+  </header>
+
+  <div class="activity-list">
+    {% for activity in day.activities %}
+    <div class="activity-card"
+         data-activity-id="{{ activity.id }}"
+         data-locked="{{ 'true' if activity.locked else 'false' }}">
+      <div class="activity-time">{{ activity.time }}</div>
+      <div class="activity-main">
+        <div class="activity-name">{{ activity.name }}</div>
+        <div class="activity-meta">{{ activity.category }} · ¥{{ "%.0f"|format(activity.cost) }}</div>
+      </div>
+      <div class="activity-actions" aria-label="活动操作">
+        <button type="button" class="icon-btn" title="上移（接口接入后启用）" disabled>↑</button>
+        <button type="button" class="icon-btn" title="下移（接口接入后启用）" disabled>↓</button>
+        <button type="button" class="icon-btn" title="替换（接口接入后启用）" disabled>换</button>
+        <button type="button" class="icon-btn danger" title="删除（接口接入后启用）" disabled>删</button>
+        <label class="lock-toggle">
+          <input type="checkbox" {% if activity.locked %}checked{% endif %} disabled>
+          锁定
+        </label>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</article>
