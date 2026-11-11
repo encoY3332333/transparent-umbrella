@@ -44,7 +44,7 @@
 - 预估工作量：10 小时
 - Labels：`feature` `frontend` `P1`
 - Milestone：`v0.2.0 Beta`
-- Assignee：【组员1】
+- Assignee：@star-X09
 - 分支：`feature/9-adjust-itinerary`
 - 涉及业务规则：BR-13、BR-14、BR-15
 
