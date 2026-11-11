@@ -43,7 +43,7 @@
 - 预估工作量：8 小时
 - Labels：`feature` `backend` `P0`
 - Milestone：`v0.1.0 Alpha`
-- Assignee：【组长】
+- Assignee：@star-X09
 - 分支：`feature/5-poi-crowd-index`
 - 涉及业务规则：BR-09、BR-10
 

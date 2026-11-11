@@ -44,7 +44,7 @@
 - 预估工作量：4 小时
 - Labels：`ci` `P0`
 - Milestone：`M0-工程启动`
-- Assignee：【组长】
+- Assignee：@richkoijx
 - 分支：`feature/14-ci-coverage`
 
 ## 备注

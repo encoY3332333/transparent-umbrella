@@ -46,7 +46,7 @@
 - 预估工作量：8 小时
 - Labels：`feature` `frontend` `P0`
 - Milestone：`v0.1.0 Alpha`
-- Assignee：【组员2】
+- Assignee：@encoY3332333
 - 分支：`feature/8-itinerary-view`
 - 涉及业务规则：BR-11、BR-12
 

@@ -48,7 +48,7 @@ SmartTrip 的行程推荐需要「个性化」的输入：同样去杭州、同�
 - 预估工作量：6 小时
 - Labels：`feature` `backend` `P0`
 - Milestone：`v0.1.0 Alpha`
-- Assignee：【组员2】
+- Assignee：@encoY3332333
 - 分支：`feature/2-tourist-login`
 - 涉及业务规则：BR-01、BR-02
 

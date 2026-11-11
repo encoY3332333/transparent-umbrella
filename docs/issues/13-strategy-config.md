@@ -42,7 +42,7 @@
 - 预估工作量：6 小时
 - Labels：`feature` `backend` `P2`
 - Milestone：`v0.3.0 Pre`
-- Assignee：【组长】
+- Assignee：@richkoijx
 - 分支：`feature/13-strategy-config`
 - 涉及业务规则：BR-23、BR-24
 

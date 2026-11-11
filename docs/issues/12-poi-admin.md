@@ -43,7 +43,7 @@
 - 预估工作量：8 小时
 - Labels：`feature` `frontend` `P2`
 - Milestone：`v0.3.0 Pre`
-- Assignee：【组员1】
+- Assignee：@encoY3332333
 - 分支：`feature/12-poi-admin`
 - 涉及业务规则：BR-21、BR-22
 

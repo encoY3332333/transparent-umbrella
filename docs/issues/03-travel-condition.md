@@ -44,7 +44,7 @@
 - 预估工作量：8 小时
 - Labels：`feature` `frontend` `P0`
 - Milestone：`v0.1.0 Alpha`
-- Assignee：【组员1】
+- Assignee：@star-X09
 - 分支：`feature/3-travel-condition`
 - 涉及业务规则：BR-03、BR-04、BR-05
 

@@ -64,7 +64,7 @@ Score(p, d) = w_pref    * PrefMatch(p, tourist)
 - 预估工作量：10 小时
 - Labels：`feature` `backend` `P0`
 - Milestone：`v0.1.0 Alpha`
-- Assignee：【组长】
+- Assignee：@richkoijx
 - 分支：`feature/6-strategy-engine`
 - 涉及业务规则：BR-06、BR-07、BR-08、BR-09、BR-23
 

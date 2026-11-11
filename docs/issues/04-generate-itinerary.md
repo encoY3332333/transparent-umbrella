@@ -47,7 +47,7 @@ UC-03 是整个系统的核心，但一次性做完不可控（预估 24 小时�
 - 预估工作量：4 小时
 - Labels：`feature` `backend` `P0`
 - Milestone：`v0.1.0 Alpha`
-- Assignee：【组长】
+- Assignee：@richkoijx
 - 分支：`feature/4-generate-itinerary`
 - 涉及业务规则：BR-10
 

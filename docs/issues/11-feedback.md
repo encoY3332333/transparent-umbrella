@@ -40,6 +40,6 @@
 - 预估工作量：4 小时
 - Labels：`feature` `backend` `P1`
 - Milestone：`v0.2.0 Beta`
-- Assignee：【组员2】
+- Assignee：@encoY3332333
 - 分支：`feature/11-feedback`
 - 涉及业务规则：BR-19、BR-20

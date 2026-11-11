@@ -42,7 +42,7 @@
 - 预估工作量：6 小时
 - Labels：`feature` `backend` `P1`
 - Milestone：`v0.2.0 Beta`
-- Assignee：【组员1】
+- Assignee：@star-X09
 - 分支：`feature/10-save-share`
 - 涉及业务规则：BR-16、BR-17、BR-18
 
