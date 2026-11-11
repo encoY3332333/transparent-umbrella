@@ -30,6 +30,22 @@ def test_adjust_page_shows_validation_and_budget(client: TestClient) -> None:
 
     assert 'data-status="ok"' in body
     assert "当前方案无冲突" in body
+    assert 'id="budget-total"' in body
+    assert 'id="estimated-cost"' in body
+    assert 'id="remaining-budget"' in body
     assert "¥6000" in body
     assert "¥5680" in body
     assert "¥320" in body
+
+
+def test_adjust_page_exposes_local_action_hooks(client: TestClient) -> None:
+    body = client.get("/itineraries/1/adjust").text
+
+    assert 'data-action="move-up"' in body
+    assert 'data-action="move-down"' in body
+    assert 'data-action="delete"' in body
+    assert "data-lock" in body
+    assert 'data-cost="0"' in body
+    assert "data-undo" in body
+    assert "data-redo" in body
+    assert "最多撤销 5 步" in body
