@@ -7,5 +7,6 @@
 from __future__ import annotations
 
 from app.adapters.base import BaseAdapter
+from app.adapters.traffic import TrafficServerAdapter
 
-__all__ = ["BaseAdapter"]
+__all__ = ["BaseAdapter", "TrafficServerAdapter"]
