@@ -31,6 +31,18 @@ def iter_markdown_files() -> list[Path]:
     return files
 
 
+def display_path(resolved: Path) -> str:
+    """把绝对路径转成相对仓库根的展示路径；越出仓库时原样返回。
+
+    不能直接用 `relative_to(REPO_ROOT)`：指向仓库外的链接（如 `../../../x.md`）
+    会抛 ValueError 让脚本整体崩溃，而它的职责是「报告坏链接」而不是「崩掉」。
+    """
+    try:
+        return str(resolved.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(resolved)
+
+
 def broken_links(path: Path) -> list[str]:
     text = path.read_text(encoding="utf-8", errors="replace")
     broken: list[str] = []
@@ -44,7 +56,7 @@ def broken_links(path: Path) -> list[str]:
             continue  # 纯锚点在本文件内，静态检查不判
         resolved = (path.parent / bare).resolve()
         if not resolved.exists():
-            broken.append(f"{target}  （应为 {resolved.relative_to(REPO_ROOT)}）")
+            broken.append(f"{target}  （应为 {display_path(resolved)}）")
     return broken
 
 

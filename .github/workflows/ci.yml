@@ -224,8 +224,11 @@ jobs:
 
       - name: Check if backend exists
         id: guard
+        # 注意：本 job 的 defaults.run.working-directory 已经是 backend，
+        # 这里必须用相对路径 pyproject.toml，写成 backend/pyproject.toml 会变成
+        # backend/backend/pyproject.toml 从而永远为假（评审 #33 指出）。
         run: |
-          if [ -f backend/pyproject.toml ]; then
+          if [ -f pyproject.toml ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
