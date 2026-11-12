@@ -7,6 +7,17 @@
 
 ### Added
 
+- `docs/guides/评审与互评操作指南.md`：交叉评审安排、评审 6 维度与下限、组内互评 5 项硬指标
+- `docs/contributions/`：A / B / C 三份个人工程贡献说明书初稿
+
+## [0.1.0] - 2026-11-11
+
+**需求基线 + 工程规范正式发布**。这一版交付第一阶段的过程材料与后端工程底座，仍无可交付的业务功能。
+详细说明见 [`docs/release-notes/v0.1.0.md`](./docs/release-notes/v0.1.0.md)。
+
+
+### Added
+
 - **工程脚手架落地（Issue #1）：`backend/` 从空目录变为可运行的 FastAPI 单体应用**
   - `pyproject.toml`：依赖 + Ruff / Mypy / Pytest / Coverage 五套工具配置集中一处
   - `app/main.py`：应用工厂 `create_app()`、静态资源挂载、traceId 中间件、统一异常处理
