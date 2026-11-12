@@ -479,12 +479,12 @@ def build_reasons(
 
 
 __all__ = [
+    "OUTDOOR_CATEGORIES",
     "Activity",
     "DayPlan",
     "PackError",
     "Packer",
     "PlanResult",
     "build_reasons",
-    "OUTDOOR_CATEGORIES",
     "is_outdoor",
 ]
