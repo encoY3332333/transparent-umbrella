@@ -76,12 +76,17 @@ jobs:
           DATABASE_URL: "sqlite+pysqlite:///:memory:"
           APP_ENV: ci
         run: |
-          pytest -q \
+          # -m "not perf"：性能基线在独立 perf job 里跑（仅 main/workflow_dispatch），PR 上跳过
+          pytest -q -m "not perf" \
             --cov=app \
             --cov-report=term-missing \
             --cov-report=xml \
             --cov-report=html \
             --cov-fail-under=40
+
+      - name: Coverage floor (engine/services >= 60%)
+        if: steps.guard.outputs.exists == 'true' && always()
+        run: python ../scripts/check-coverage-floor.py coverage.xml
 
       - name: Upload coverage report
         if: steps.guard.outputs.exists == 'true' && always()
@@ -198,6 +203,58 @@ jobs:
             exit 1
           fi
           echo "未发现硬编码密钥"
+
+      - name: Check doc links
+        run: python3 scripts/check-doc-links.py
+
+  # ===========================================================
+  # 性能基线：200 POI × 7 天 P95 ≤ 10s（NFR-P1）。
+  # 仅 main 与 workflow_dispatch 运行——PR 上跑太慢，且性能受 runner 波动影响大
+  # ===========================================================
+  perf:
+    name: Perf Baseline
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check if backend exists
+        id: guard
+        # 注意：本 job 的 defaults.run.working-directory 已经是 backend，
+        # 这里必须用相对路径 pyproject.toml，写成 backend/pyproject.toml 会变成
+        # backend/backend/pyproject.toml 从而永远为假（评审 #33 指出）。
+        run: |
+          if [ -f pyproject.toml ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::backend/pyproject.toml 尚未创建，跳过性能基线"
+          fi
+
+      - name: Setup Python
+        if: steps.guard.outputs.exists == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install dependencies
+        if: steps.guard.outputs.exists == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run performance baseline
+        if: steps.guard.outputs.exists == 'true'
+        env:
+          DATABASE_URL: "sqlite+pysqlite:///:memory:"
+          APP_ENV: ci
+        run: pytest -q -m perf -s
 
   # ===========================================================
   # 汇总门禁：以上全部通过才算 CI 通过（建议设为必需状态检查）

@@ -1,5 +1,7 @@
 # transparent-umbrella
 
+[![CI](https://github.com/encoY3332333/transparent-umbrella/actions/workflows/ci.yml/badge.svg)](https://github.com/encoY3332333/transparent-umbrella/actions/workflows/ci.yml)
+
 > 智能旅游规划系统（SmartTrip）——输入出发地、目的地、时间与预算，结合天气、历史游览人数与当地活动，自动编排一份可执行、可调整的旅行行程。
 
 ![status](https://img.shields.io/badge/status-v0.1.0--planning-blue)
