@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}行程调整{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">UC-05 · ADJUST ITINERARY</p>
+  <h1>行程调整</h1>
+  <p class="lede">
+    对已生成的方案做局部调整：上移/下移、替换、删除、锁定必去项后重排。
+    当前为本地交互原型，调整只影响页面，保存接口会在 #9 的后续提交中接入。
+  </p>
+</section>
+
+<div class="validation-bar" data-status="ok" role="status">
+  <strong>本地预览：当前方案无冲突</strong>
+  <span>顺序调整不会提交到服务器；保存前会再次校验。</span>
+</div>
+
+<div class="budget-strip" aria-live="polite">
+  <div>
+    <span class="muted">总预算</span>
+    <strong id="budget-total">¥{{ "%.0f"|format(itinerary.budget) }}</strong>
+  </div>
+  <div>
+    <span class="muted">预计花费</span>
+    <strong id="estimated-cost">¥{{ "%.0f"|format(itinerary.estimated_cost) }}</strong>
+  </div>
+  <div>
+    <span class="muted">剩余</span>
+    <strong id="remaining-budget">¥{{ "%.0f"|format(itinerary.budget - itinerary.estimated_cost) }}</strong>
+  </div>
+</div>
+
+<div class="adjust-toolbar">
+  <span class="muted">本地交互：可调整顺序、删除、锁定；最多撤销 5 步。</span>
+  <div class="row">
+    <button class="btn btn-ghost" type="button" data-undo disabled>撤销</button>
+    <button class="btn btn-ghost" type="button" data-redo disabled>重做</button>
+  </div>
+</div>
+
+<div class="adjust-layout">
+  <section class="adjust-days" aria-label="按天行程">
+    {% for day in itinerary.days %}
+      {% include "itinerary/_day_column.html" %}
+    {% endfor %}
+  </section>
+
+  <aside class="adjust-side">
+    <div class="card">
+      <h2>调整说明</h2>
+      <ul class="steps">
+        <li>带“锁定”的活动在重排中保持原位。</li>
+        <li>删除或替换后，只重算受影响活动相邻两项的通勤。</li>
+        <li>保存会生成新版本，历史最多保留 10 个。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>保存</h2>
+      <p class="muted">本地调整不会提交；保存接口接入后才会生成新版本。</p>
+      <button class="btn" type="button" disabled>保存调整</button>
+      <a class="btn btn-ghost" href="/itineraries/{{ itinerary.id }}">取消</a>
+    </div>
+  </aside>
+</div>
+
+<script>
+(function () {
+  const daysRoot = document.querySelector(".adjust-days");
+  const total = Number(
+    document.getElementById("budget-total").textContent.replace(/[^\d.]/g, "")
+  );
+  const estimatedNode = document.getElementById("estimated-cost");
+  const remainingNode = document.getElementById("remaining-budget");
+  const undoButton = document.querySelector("[data-undo]");
+  const redoButton = document.querySelector("[data-redo]");
+  const undoStack = [];
+  const redoStack = [];
+
+  function activityCost() {
+    return Array.from(daysRoot.querySelectorAll(".activity-card")).reduce(
+      (sum, card) => sum + Number(card.dataset.cost || 0),
+      0
+    );
+  }
+
+  // 交通/住宿等固定成本不在卡片上，先用“初始预计花费 - 初始活动费用”反推。
+  const fixedCost = Number(estimatedNode.textContent.replace(/[^\d.]/g, "")) - activityCost();
+
+  function snapshot() {
+    daysRoot.querySelectorAll("[data-lock]").forEach(function (checkbox) {
+      checkbox.toggleAttribute("checked", checkbox.checked);
+    });
+    return daysRoot.innerHTML;
+  }
+
+  function updateBudget() {
+    const estimated = fixedCost + activityCost();
+    const remaining = total - estimated;
+    estimatedNode.textContent = "¥" + estimated.toFixed(0);
+    remainingNode.textContent = "¥" + remaining.toFixed(0);
+    remainingNode.classList.toggle("budget-negative", remaining < 0);
+  }
+
+  function updateHistoryButtons() {
+    undoButton.disabled = undoStack.length === 0;
+    redoButton.disabled = redoStack.length === 0;
+  }
+
+  function pushHistory() {
+    undoStack.push(snapshot());
+    if (undoStack.length > 5) undoStack.shift();
+    redoStack.length = 0;
+    updateHistoryButtons();
+  }
+
+  function restore(html) {
+    daysRoot.innerHTML = html;
+    updateBudget();
+    updateHistoryButtons();
+  }
+
+  function undo() {
+    if (undoStack.length === 0) return;
+    redoStack.push(snapshot());
+    if (redoStack.length > 5) redoStack.shift();
+    restore(undoStack.pop());
+  }
+
+  function redo() {
+    if (redoStack.length === 0) return;
+    undoStack.push(snapshot());
+    if (undoStack.length > 5) undoStack.shift();
+    restore(redoStack.pop());
+  }
+
+  function cardOf(button) {
+    return button.closest(".activity-card");
+  }
+
+  daysRoot.addEventListener("click", function (event) {
+    const button = event.target.closest("[data-action]");
+    if (!button) return;
+    const card = cardOf(button);
+    if (!card) return;
+    const action = button.dataset.action;
+
+    if (action === "replace") {
+      window.alert("替换接口会在 #8 行程接口落地后接入。");
+      return;
+    }
+
+    if (action === "delete") {
+      if (!window.confirm("确定删除这个活动？")) return;
+      pushHistory();
+      card.remove();
+      updateBudget();
+      return;
+    }
+
+    if (action === "move-up" || action === "move-down") {
+      if (card.dataset.locked === "true") {
+        window.alert("这个活动已锁定，不能移动。");
+        return;
+      }
+      const sibling =
+        action === "move-up" ? card.previousElementSibling : card.nextElementSibling;
+      if (!sibling) return;
+      pushHistory();
+      if (action === "move-up") {
+        card.parentElement.insertBefore(card, sibling);
+      } else {
+        card.parentElement.insertBefore(sibling, card);
+      }
+    }
+  });
+
+  daysRoot.addEventListener("change", function (event) {
+    const checkbox = event.target.closest("[data-lock]");
+    if (!checkbox) return;
+    const card = cardOf(checkbox);
+    if (!card) return;
+
+    // change 事件触发时 checked 已经变了；先临时还原旧状态，保证撤销能回到操作前。
+    const next = checkbox.checked;
+    const previous = !next;
+    checkbox.checked = previous;
+    card.dataset.locked = previous ? "true" : "false";
+    pushHistory();
+    checkbox.checked = next;
+    card.dataset.locked = next ? "true" : "false";
+  });
+
+  undoButton.addEventListener("click", undo);
+  redoButton.addEventListener("click", redo);
+
+  document.addEventListener("keydown", function (event) {
+    if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "z") return;
+    event.preventDefault();
+    if (event.shiftKey) redo();
+    else undo();
+  });
+
+  updateBudget();
+  updateHistoryButtons();
+})();
+</script>
+{% endblock %}
