@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from app.engine.selector import (
@@ -111,3 +114,30 @@ def test_select_rejects_must_avoid_overlap() -> None:
 
     with pytest.raises(PoiSelectionError):
         CandidateSelector().select(criteria, [make_poi(1)])
+
+
+def test_seed_has_enough_published_xian_pois() -> None:
+    seed_path = Path(__file__).resolve().parents[1] / "app" / "seed" / "pois.json"
+    raw = json.loads(seed_path.read_text(encoding="utf-8"))
+    pois = [
+        Poi(
+            id=item["id"],
+            name=item["name"],
+            city=item["city"],
+            category=item["category"],
+            lat=item["lat"],
+            lng=item["lng"],
+            open_time=item["openTime"],
+            close_time=item["closeTime"],
+            price=item["price"],
+            capacity=item["capacity"],
+            tags=tuple(item["tags"]),
+            status=item["status"],
+        )
+        for item in raw
+    ]
+
+    selected = CandidateSelector().select(SelectionCriteria(city="西安"), pois)
+
+    assert len(selected) >= 20
+    assert all(poi.status == "PUBLISHED" for poi in selected)
