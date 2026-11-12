@@ -36,14 +36,16 @@ SmartTrip 把这些重复劳动自动化。用户只需输入少量条件，系�
 
 | 里程碑 | 内容 | 状态 |
 |---|---|---|
-| 文档基线 | SRS v1.0（14 张 UML 图已嵌入）、架构说明、接口清单、6 份 ADR | ✅ 已冻结（`v0.0.1`） |
-| 工程配置 | CI、Issue/PR 模板、CODEOWNERS、分支规范 | ✅ 已生效，CI 绿灯 |
-| 任务拆分 | [14 个 Issue](https://github.com/encoY3332333/transparent-umbrella/issues?q=is%3Aissue) 分入 5 个 Milestone，共 92 人时 | ✅ 已创建 |
-| 代码 | `backend/` 应用脚手架（FastAPI + Jinja2 单体） | ✅ 已跑通（Issue #1） |
+| 文档基线 | SRS v1.0（14 张 UML 图已嵌入）、架构说明、接口清单、7 份 ADR | ✅ 已冻结 |
+| 协作规范 | 附件 3 协作规范、Issue/PR 模板、CODEOWNERS、Commit 信息校验 | ✅ 已生效 |
+| 任务拆分 | [14 个 Issue](https://github.com/encoY3332333/transparent-umbrella/issues?q=is%3Aissue) 分入 5 个 Milestone，共 92 人时，已指派到 3 人 | ✅ 已创建 |
+| 工程基线 | `backend/` FastAPI 脚手架、45 个测试用例、四段 CI | ✅ 已跑通（#1 已关闭） |
+| 协作实跑 | 18 个 PR（12 已合并 / 1 关闭 / 5 待评审）、39 次 CI 运行 | 🟡 待补交叉评审 |
 
-- 版本发布：[`v0.0.1`](https://github.com/encoY3332333/transparent-umbrella/releases/tag/v0.0.1)（pre-release，仅文档与配置）
+- 版本发布：[`v0.1.0`](https://github.com/encoY3332333/transparent-umbrella/releases/tag/v0.1.0)（2026-11-11，需求基线 + 工程规范）
 - 任务看板：[Issues](https://github.com/encoY3332333/transparent-umbrella/issues) · [Milestones](https://github.com/encoY3332333/transparent-umbrella/milestones)
 - 考核项对照：[`docs/assessment-checklist.md`](./docs/assessment-checklist.md)（A1–A8 / B1–B7 逐项自查）
+- 评审与互评：[`docs/guides/评审与互评操作指南.md`](./docs/guides/评审与互评操作指南.md)（交叉评审安排、6 条下限、互评表）
 - 会议记录：[`docs/meetings/`](./docs/meetings/) · 进展报告：[`docs/reports/`](./docs/reports/) · 架构决策：[`docs/adr/`](./docs/adr/)
 
 ## 技术栈

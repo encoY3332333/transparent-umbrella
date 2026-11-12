@@ -19,7 +19,9 @@
 
 > **状态：14 个 Issue 已于 2026-11-10 全部创建完毕**，实际编号与下表行序完全一致（`#1`–`#14`），
 > 每个都带 Label 与 Milestone，正文与本目录文件内容一致。
-> 唯一的待办是 **Assignee 尚未指派**——三人真实 GitHub 账号确认后，在 Issue 右侧设置即可（见文末）。
+> **Assignee 已于 2026-11-11 全部指派**：A（`encoY3332333`）5 个、B（`richkoijx`）5 个、C（`star-X09`）4 个，
+> 与 `附件5_需求清单与Issue拆分表.xlsx` 的表 2 一致。当前待办只剩 **#2–#14 的开发与关闭**——Issue 建好不等于任务完成，
+> 关闭状态才计入个人贡献（B1）。
 >
 > **关于 `frontend` / `backend` 两个 Label**：Label 名沿用技术栈切换前的命名（已上线，改名会丢失历史），
 > 语义已调整为——`backend` = Python 应用逻辑（`services/` `engine/` `adapters/` `models/` `schemas/`），
