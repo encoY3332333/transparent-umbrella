@@ -449,6 +449,26 @@ class TestCrowdShift:
         assert acts and acts[0].crowd_shifted is False
         assert acts[0].start == time(9, 0)
 
+    def test_late_opening_is_not_counted_as_crowd_shift(self) -> None:
+        """开门晚导致的顺延不能被记成「已避开人流高峰」。
+
+        `_fit()` 里 `arrive` 会被 `max(cursor + travel, open_time)` 抬高，
+        如果直接用 `shifted` 当错峰标志，14:00 才开门的低拥挤 POI 也会被
+        `build_reasons()` 报成「已避开 10:00–15:00 高峰」——理由与事实相反。
+        """
+        poi = make_poi(1, open_time="14:00", close_time="18:00")
+        result = Packer().plan(
+            start_date=DAY,
+            days=1,
+            candidates=[cand(poi, crowd=10)],
+            tourist=tourist(),
+            weather_by_day={DAY: "CLEAR"},
+        )
+        acts = result.days[0].activities
+        assert acts and acts[0].start == time(14, 0)
+        assert acts[0].crowd_shifted is False
+        assert not [r for r in result.reasons if "BR-09" in r], "不应声称已避开人流高峰"
+
     def test_unknown_crowd_is_not_shifted(self) -> None:
         """拥挤度数据缺失时不触发错峰（无法判断是否拥挤）。"""
         poi = make_poi(1, open_time="09:00", close_time="18:00")
@@ -579,6 +599,28 @@ class TestFreeSlot:
         assert day.activity_count == 1
         assert day.free_slot is True
         assert day.free_slot_hint, "自由时段应给出周边可选 POI 提示"
+
+    def test_free_slot_hint_excludes_already_placed(self) -> None:
+        """提示里的「周边可选」不能是当天已经排进去的景点（否则用户看到重复建议）。
+
+        构造：1 个 09:00–12:00 的景点排进 1 个，外加 3 个 13:00–14:20 的景点
+        （午休后到关门不足 90 分钟，排不下），于是当天只有 1 个活动 → free_slot，
+        剩余池仍有 3 个。若直接用原始 candidates[:3]，提示就会把「景点1」重复一遍。
+        """
+        first = make_poi(1, open_time="09:00", close_time="12:00")
+        late = [make_poi(i, open_time="13:00", close_time="14:20") for i in range(2, 5)]
+        result = Packer().plan(
+            start_date=DAY,
+            days=1,
+            candidates=[cand(p, crowd=0) for p in [first, *late]],
+            tourist=tourist(),
+            weather_by_day={DAY: "CLEAR"},
+        )
+        day = result.days[0]
+        assert day.free_slot is True
+        assert [a.name for a in day.activities] == ["景点1"]
+        assert not any("景点1" in h for h in day.free_slot_hint), "提示里重复了当天已排景点"
+        assert len(day.free_slot_hint) == 3
 
     def test_zero_activity_marks_free_slot(self) -> None:
         result = Packer().plan(
