@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% block title %}推荐策略参数{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <h1>推荐策略参数</h1>
+  <p class="muted">
+    UC-09 · 五项权重与规则阈值。发布后<strong>只影响新发起的规划</strong>，已生成的行程不回溯。
+    当前生效版本：<span class="chip chip-ok">v{{ current.version }}</span>
+    {% if current.version == 0 %}<span class="muted">（尚未发布，使用配置默认值）</span>{% endif %}
+  </p>
+</section>
+
+<div class="strategy" x-data="strategyForm()">
+  {# 权重和只在 |Σ-1| > 0.01 时标红：与 BR-23 的允差一致，避免 0.999 就报警 #}
+  <div class="card">
+    <div class="card-head">
+      <h2>五项权重</h2>
+      <div class="sum" :class="sumOk ? 'sum-ok' : 'sum-bad'">
+        Σ = <span x-text="total.toFixed(3)"></span>
+        <span x-show="!sumOk">（需为 1，允差 ±0.01）</span>
+      </div>
+    </div>
+
+    {% for key, label in weight_labels.items() %}
+    <div class="slider-row">
+      <label for="w-{{ key }}">{{ label }}</label>
+      <input id="w-{{ key }}" type="range" min="0" max="1" step="0.01"
+             x-model.number="weights['{{ key }}']">
+      <input type="number" min="0" max="1" step="0.01" class="num"
+             x-model.number="weights['{{ key }}']">
+    </div>
+    {% endfor %}
+
+    <div class="row-actions">
+      <button type="button" class="btn btn-ghost" @click="normalize()">一键归一化</button>
+      <span class="muted">按比例缩放到和为 1，残差补到最大项</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>规则阈值</h2>
+    <div class="form-row">
+      {% for key, pair in threshold_labels.items() %}
+      <label class="field">
+        <span>{{ pair[0] }}<em class="muted">（{{ pair[1] }}）</em></span>
+        <input type="number" min="1" step="1" x-model.number="thresholds['{{ key }}']">
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>节假日人流系数</h2>
+    <div class="form-row">
+      {% for name, factor in holiday_factors.items() %}
+      <label class="field">
+        <span>{{ name }}</span>
+        <input type="number" min="0.1" max="5" step="0.1"
+               x-model.number="holidayFactors['{{ name }}']">
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>兜底规则</h2>
+    <p class="muted">
+      取消勾选 = 关闭该维度的兜底。<strong>权重为 0 且兜底关闭</strong>时，
+      该维度既不计分、缺数据也不补偿，发布前会要求二次确认。
+    </p>
+    <div class="checks">
+      {% for key, label in weight_labels.items() %}
+      <label class="check">
+        <input type="checkbox" value="{{ key }}" x-model="disabledFallbacks">
+        <span>{{ label }} 兜底已关闭</span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="row-actions sticky-actions">
+    <button type="button" class="btn" :disabled="saving" @click="save(false)">
+      <span x-text="saving ? '发布中…' : '发布新版本'"></span>
+    </button>
+    <button type="button" class="btn btn-ghost" @click="reload()">还原</button>
+    <span class="msg" :class="'msg-' + level" x-show="message" x-text="message"></span>
+  </div>
+
+  <div class="modal" x-show="confirmOpen" x-cloak>
+    <div class="modal-box">
+      <h3>需要二次确认</h3>
+      <ul class="warn-list">
+        <template x-for="(item, index) in warnings" :key="index">
+          <li x-text="item"></li>
+        </template>
+      </ul>
+      <div class="row-actions">
+        <button type="button" class="btn" @click="save(true)">确认发布</button>
+        <button type="button" class="btn btn-ghost" @click="confirmOpen = false">取消</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="card">
+  <h2>版本历史</h2>
+  <p class="muted">历史版本永久保留（BR-24）。回滚不会删除任何版本，而是以目标版本的参数再发一版。</p>
+  <table class="strategy-table">
+    <thead>
+      <tr>
+        <th>版本</th>
+        <th>权重（按 {{ weight_labels.keys() | join(' / ') }}）</th>
+        <th>说明</th>
+        <th>创建人</th>
+        <th>生效时间</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in versions %}
+      <tr>
+        <td><strong>v{{ item.version }}</strong>{% if loop.first %}<span class="chip chip-ok">生效中</span>{% endif %}</td>
+        <td class="weights">
+          {% for key in weight_labels %}{{ item.weights[key] | round(3) }}{% if not loop.last %} · {% endif %}{% endfor %}
+        </td>
+        <td>{{ item.note or '—' }}</td>
+        <td>{{ item.created_by }}</td>
+        <td>{{ item.effective_from.strftime('%Y-%m-%d %H:%M') if item.effective_from else '—' }}</td>
+        <td>
+          <button type="button" class="btn btn-ghost btn-sm"
+                  @click="rollback({{ item.version }})">回滚到此版本</button>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="muted">还没有发布过任何版本，当前使用配置默认值。</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<script>
+  const STRATEGY_INITIAL = {
+    weights: {{ weights | tojson }},
+    thresholds: {{ thresholds | tojson }},
+    holidayFactors: {{ holiday_factors | tojson }},
+    disabledFallbacks: {{ disabled_fallbacks | tojson }}
+  };
+
+  function strategyForm() {
+    return {
+      weights: { ...STRATEGY_INITIAL.weights },
+      thresholds: { ...STRATEGY_INITIAL.thresholds },
+      holidayFactors: { ...STRATEGY_INITIAL.holidayFactors },
+      disabledFallbacks: [...STRATEGY_INITIAL.disabledFallbacks],
+      message: "",
+      level: "ok",
+      warnings: [],
+      confirmOpen: false,
+      saving: false,
+
+      get total() {
+        return Object.values(this.weights).reduce((sum, v) => sum + Number(v || 0), 0);
+      },
+      get sumOk() {
+        return Math.abs(this.total - 1) <= 0.01;
+      },
+
+      payload(confirm) {
+        return {
+          weights: this.weights,
+          thresholds: this.thresholds,
+          holidayFactors: this.holidayFactors,
+          disabledFallbacks: this.disabledFallbacks,
+          confirm: confirm
+        };
+      },
+
+      async post(url, body) {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+        return { ok: res.ok, data: await res.json() };
+      },
+
+      async normalize() {
+        const { ok, data } = await this.post("/api/admin/strategies/normalize", {
+          weights: this.weights
+        });
+        if (!ok) {
+          this.fail(data.message);
+          return;
+        }
+        this.weights = data.data.weights;
+        this.message = "已归一化；确认无误后发布。";
+        this.level = "ok";
+      },
+
+      async save(confirm) {
+        this.saving = true;
+        this.confirmOpen = false;
+        try {
+          const { ok, data } = await this.post("/api/admin/strategies", this.payload(confirm));
+          if (!ok) {
+            // 400 的 details 里带当前和，拼进去满足 AC-2「显示当前和」
+            const detail = (data.details && data.details[0] && data.details[0].reason) || "";
+            this.fail(data.message + (detail ? "：" + detail : ""));
+            return;
+          }
+          if (data.data.requiresConfirm) {
+            this.warnings = data.data.warnings;
+            this.confirmOpen = true;
+            return;
+          }
+          this.level = "ok";
+          this.message = "已发布 v" + data.data.strategy.version + "，新发起的规划立即使用新参数。";
+          setTimeout(() => this.reload(), 900);
+        } finally {
+          this.saving = false;
+        }
+      },
+
+      async rollback(version) {
+        const { ok, data } = await this.post("/api/admin/strategies/rollback/" + version, {});
+        if (!ok) {
+          this.fail(data.message);
+          return;
+        }
+        this.level = "ok";
+        this.message = "已回滚：生成新版本 v" + data.data.version + "（参数取自 v" + version + "）。";
+        setTimeout(() => this.reload(), 900);
+      },
+
+      fail(text) {
+        this.level = "bad";
+        this.message = text;
+      },
+
+      reload() {
+        window.location.reload();
+      }
+    };
+  }
+</script>
+{% endblock %}

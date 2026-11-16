@@ -40,6 +40,7 @@ from app.schemas.itinerary import (
 )
 from app.services.plan_service import PlanService
 from app.services.poi_repository import PoiRepository
+from app.services.strategy_service import StrategyService
 
 logger = logging.getLogger(__name__)
 
@@ -70,9 +71,19 @@ def _requirement(payload: GenerateRequest) -> Requirement:
 
 
 def _context(payload: GenerateRequest, requirement: Requirement, session: Session) -> PlanContext:
-    """组装上下文：现在只有 POI 池，天气 / 路网由 #6 #7 落地时补。"""
+    """组装上下文：POI 池 + 当前生效的策略权重。
+
+    **权重每次生成都从 UC-09 的策略表取**（`StrategyService` 内部带 60 秒缓存，
+    发布/回滚时主动失效），而不是在进程启动时读一次——这正是 AC-1
+    「保存后 5 秒内新参数对新发起的规划生效」的实现方式。
+    """
     pois = PoiRepository().read_pois(session, requirement.city)
-    return PlanContext(requirement=requirement, pois=tuple(pois))
+    strategy = StrategyService(session).current()
+    return PlanContext(
+        requirement=requirement,
+        pois=tuple(pois),
+        strategy_weights=strategy.engine_weights(),
+    )
 
 
 # ----------------------------------------------------------------------
