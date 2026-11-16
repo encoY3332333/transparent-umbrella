@@ -61,10 +61,15 @@ class SelectionCriteria:
 
 @dataclass(frozen=True)
 class Candidate:
-    """带拥挤度的候选 POI；crowd_index 为 None 表示数据源降级。"""
+    """带拥挤度的候选 POI。
+
+    `crowd_index=None` 且 `crowd_known=False` 表示数据/承载量缺失，
+    下游应按保守口径处理，不能当成「不拥挤」。
+    """
 
     poi: Poi
     crowd_index: int | None = None
+    crowd_known: bool = True
 
 
 def _normalize_city(city: str) -> str:
@@ -132,6 +137,11 @@ class CandidateSelector:
         )
 
         if len(selected) > criteria.max_candidates:
+            dropped_must = [poi for poi in selected[criteria.max_candidates :] if poi.id in must]
+            if dropped_must:
+                raise PoiSelectionError(
+                    f"必去 POI {len(dropped_must)} 个超出候选上限 {criteria.max_candidates}"
+                )
             selected = selected[: criteria.max_candidates]
 
         return selected

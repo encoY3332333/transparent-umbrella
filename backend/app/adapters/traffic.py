@@ -17,13 +17,14 @@ from app.adapters.base import BaseAdapter
 BATCH_SIZE = 50
 
 
-def _parse_volume_payload(payload: dict[str, Any]) -> dict[int, int]:
-    """兼容两种响应：
+def _parse_volume_payload(payload: Any) -> dict[int, int]:
+    """兼容两种响应，且对「裸数组」不抛异常：
 
     {"data": {"205": 12000, ...}}
     {"data": [{"poiId": 205, "volume": 12000}, ...]}
+    [{"poiId": 205, "volume": 12000}, ...]
     """
-    raw = payload.get("data", payload)
+    raw = payload.get("data", payload) if isinstance(payload, dict) else payload
     result: dict[int, int] = {}
 
     if isinstance(raw, dict):
@@ -46,6 +47,8 @@ def _parse_volume_payload(payload: dict[str, Any]) -> dict[int, int]:
                 continue
             raw_id = item.get("poiId", item.get("poi_id"))
             raw_volume = item.get("volume", item.get("historicalVolume"))
+            if raw_id is None or raw_volume is None:
+                continue
             try:
                 result[int(raw_id)] = int(raw_volume)
             except (TypeError, ValueError):
