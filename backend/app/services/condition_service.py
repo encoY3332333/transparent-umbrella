@@ -39,7 +39,8 @@ CITY_COORDS: dict[str, tuple[float, float]] = {
 
 
 def _lookup_city(name: str) -> ResolvedCity | None:
-    normalized = name.strip().removesuffix("市")
+    # 去掉首尾和中间所有空白，再处理“市”后缀；兼容“西安 市”这类输入。
+    normalized = "".join(name.split()).removesuffix("市")
     coords = CITY_COORDS.get(normalized)
     if coords is None:
         return None
