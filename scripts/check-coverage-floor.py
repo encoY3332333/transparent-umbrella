@@ -18,8 +18,10 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-# 目录前缀 -> 最低行覆盖率
-# coverage.py XML 里 filename 相对 source 根（backend/），不带 "app/" 前缀
+# 目录前缀 -> 最低行覆盖率。
+# `--cov=app` 时 coverage 把 `app` 当作 source 根，XML 里 filename 形如
+# `engine/packer.py`（**不带** `app/` 前缀）。这一点容易看反，写成
+# `app/engine/` 会导致永远匹配不到、门禁静默失效。
 FLOORS: dict[str, float] = {
     "engine/": 60.0,
     "services/": 60.0,
@@ -33,7 +35,9 @@ def main(argv: list[str]) -> int:
         return 2
     xml_path = Path(argv[0])
     if not xml_path.exists():
-        print(f"::error::找不到 {xml_path}——pytest 需要 --cov-report=xml")
+        # 这条提示只针对「测试提前失败、没产出 xml」这一种情况；
+        # 「忘了加 --cov-report=xml」由 ci.yml 的步骤本身保证，不在这里重复提示。
+        print(f"::error::pytest 未产出 {xml_path}，请先检查上一步 Test with coverage 的退出码")
         return 2
 
     tree = ET.parse(xml_path)
@@ -53,8 +57,15 @@ def main(argv: list[str]) -> int:
     for prefix, floor in FLOORS.items():
         matched = {n: r for n, r in rates.items() if n.replace("\\", "/").startswith(prefix)}
         if not matched:
-            # services/ 还没落地时（Issue #4/#7 之前）不卡，只提醒
-            print(f"::notice::{prefix} 尚无被测文件，跳过 {floor}% 门槛")
+            # 目录还没落地时（如 services/ 在 Issue #4/#7 之前）不卡，只提醒。
+            # engine/ 在 #6 已存在，若这条 notice 指向 engine/，多半是 coverage
+            # 的 source 根或前缀写错了（写 `app/engine/` 就会永远匹配不到），
+            # 所以把实际看到的前缀一起打出来便于核对。
+            seen = sorted({n.split("/")[0] for n in rates if "/" in n})
+            print(
+                f"::notice::{prefix} 尚无被测文件，跳过 {floor:.0f}% 门槛"
+                f"（coverage 里的顶层目录：{', '.join(seen) or '无'}）"
+            )
             continue
         worst_name = min(matched, key=matched.get)  # type: ignore[arg-type]
         worst = matched[worst_name]

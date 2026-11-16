@@ -84,9 +84,17 @@ jobs:
             --cov-report=html \
             --cov-fail-under=40
 
+      # 先区分「pytest 根本没跑起来」和「覆盖率不达标」——两者都表现为红，
+      # 但排查方向完全不同。上一步没产出 coverage.xml 时，直接说明原因后退出，
+      # 不再让下面的目录门禁报「覆盖率不足」把方向带偏。
       - name: Coverage floor (engine/services >= 60%)
         if: steps.guard.outputs.exists == 'true' && always()
-        run: python ../scripts/check-coverage-floor.py coverage.xml
+        run: |
+          if [ ! -f coverage.xml ]; then
+            echo "::error::pytest 未产出 coverage.xml（上一步 Test with coverage 失败），请先看测试失败原因，不是覆盖率问题"
+            exit 1
+          fi
+          python ../scripts/check-coverage-floor.py coverage.xml
 
       - name: Upload coverage report
         if: steps.guard.outputs.exists == 'true' && always()
