@@ -2,7 +2,8 @@
 
 公式来自 SRS 3.3.3：
     CrowdIndex(p, d) = min(100, round(100 * HistVolume(p, d) / Capacity(p)))
-数据缺失或承载量非正时返回 `None`，由排程层标记为 `UNKNOWN`，不施加拥挤度惩罚。
+数据缺失或承载量非正时返回 `None`；`Candidate.crowd_known=False` 表示
+“未知风险”，由评分层按中性值处理，不能当成“不拥挤”。
 """
 
 from __future__ import annotations
@@ -47,7 +48,7 @@ def apply_crowd_index(
         result.append(
             Candidate(
                 poi=poi,
-                crowd_index=calculate_crowd_index(volume, poi.capacity),
+                crowd_index=CrowdIndexCalculator.calculate(volume, poi.capacity),
                 crowd_known=poi.capacity > 0 and volume is not None,
             )
         )
