@@ -179,7 +179,7 @@ class PlanService:
                 GeneratedPlan(itinerary=it, conflicts=conflicts)
                 for it, (_, conflicts) in zip(itineraries, accepted, strict=True)
             ],
-            duration_ms=int(round(duration_ms)),
+            duration_ms=round(duration_ms),
             degraded=list(ctx.degraded_sources),
         )
 
@@ -265,8 +265,8 @@ def _reasons_payload(reasons: tuple[Reason, ...]) -> list[dict[str, str]]:
 
 __all__ = [
     "LONG_TRANSFER_MINUTES",
+    "MAX_PLANS",
     "GeneratedPlan",
     "GenerationResult",
-    "MAX_PLANS",
     "PlanService",
 ]

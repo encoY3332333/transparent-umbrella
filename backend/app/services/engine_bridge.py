@@ -78,9 +78,9 @@ class StrategyEnginePacker:
 
     def __init__(self, engine: _StrategyEngineLike | None = None) -> None:
         if engine is None:
-            # 延迟到构造函数里 import：`#6`（PR #32）未合入时
-            # 模块级 import 会让整个应用起不来；这里失败就由 deps 回落到占位实现。
-            from app.engine.strategy_engine import StrategyEngine  # type: ignore[import-not-found]
+            # 延迟到构造函数里 import：`#6` 的引擎模块由 `build_packer()` 兜住
+            # ImportError，模块级 import 会让整个应用在未合入时起不来。
+            from app.engine.strategy_engine import StrategyEngine
 
             engine = StrategyEngine()
         self._engine = engine
@@ -204,9 +204,10 @@ def _build_request(requirement: Requirement, context: PlanContext) -> Any:
     `#32` 合入后这里会自动改用真类，行为不变也不需要改代码。
     """
     try:
-        # `#6`（PR #32）合入前这两个模块不存在，mypy 会报 import-not-found；
-        # 运行时由下面的 `except ImportError` 兜住，所以这里显式 ignore。
-        from app.engine.scorer import TouristProfile  # type: ignore[import-not-found]
+        # `app.engine.scorer` 的 `TouristProfile` 只有 `preference_tags / budget /
+        # 其他可选字段`，与 `_TouristFallback` 结构等价；两条路径都保留，是为了让
+        # 本 Issue 不依赖 `#6` 的合并顺序（`#6` 现已合入，走真类分支）。
+        from app.engine.scorer import TouristProfile
         from app.engine.strategy_engine import PlanRequest
 
         tourist_cls: Any = TouristProfile
