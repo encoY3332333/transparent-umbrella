@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}生成行程{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">UC-03 · 行程生成</p>
+  <h1>填好条件，生成 1–3 套可执行行程</h1>
+  <p class="lede">
+    同一份条件会产出多套方案，每套都带推荐理由与可行性提示。
+    生成过程在服务端完成，浏览器只等结果。
+  </p>
+</section>
+
+<div class="plan-layout">
+  {# ---------------- 左：条件表单 ---------------- #}
+  <form class="card plan-form"
+        hx-post="/api/itineraries/generate.fragment"
+        hx-target="#plan-result"
+        hx-swap="innerHTML"
+        hx-indicator="#plan-loading"
+        hx-disabled-elt="button[type=submit]"
+        method="post"
+        action="/api/itineraries/generate">
+    <h2>出行条件</h2>
+
+    <label>目的地城市
+      <input type="text" name="destCity" value="西安" required maxlength="64">
+    </label>
+
+    <div class="form-row">
+      <label>开始日期
+        <input type="date" name="startDate" value="2026-12-01" required>
+      </label>
+      <label>结束日期
+        <input type="date" name="endDate" value="2026-12-04" required>
+      </label>
+    </div>
+
+    <div class="form-row">
+      <label>总预算（元）
+        <input type="number" name="budget" value="6000" min="1" step="100" required>
+      </label>
+      <label>出行人数
+        <input type="number" name="partySize" value="2" min="1" max="20" required>
+      </label>
+    </div>
+
+    <fieldset class="tags">
+      <legend>偏好标签（最多 6 个）</legend>
+      {% for tag in ["人文历史", "自然风光", "亲子", "美食", "摄影", "夜生活"] %}
+      <label class="tag">
+        <input type="checkbox" name="preferenceTags" value="{{ tag }}"
+               {% if tag in ["人文历史", "美食"] %}checked{% endif %}>
+        <span>{{ tag }}</span>
+      </label>
+      {% endfor %}
+    </fieldset>
+
+    <label>方案数
+      <select name="variantCount">
+        <option value="1">1 套</option>
+        <option value="2" selected>2 套</option>
+        <option value="3">3 套</option>
+      </select>
+    </label>
+
+    <button class="btn" type="submit">生成行程</button>
+    <p class="muted form-note">
+      点击后按钮会置灰，直到结果返回。若服务端正在重试外部数据，可能稍慢。
+    </p>
+  </form>
+
+  {# ---------------- 右：结果区 ---------------- #}
+  <div class="plan-output">
+    {# 加载态：hx-indicator 只控制这一个块的显隐，不遮整页 #}
+    <div id="plan-loading" class="card loading-card htmx-indicator" role="status" aria-live="polite">
+      <div class="spinner" aria-hidden="true"></div>
+      <div>
+        <strong>正在计算行程</strong>
+        {# 不承诺百分比：真实耗时取决于外部接口重试次数，写 30%/70% 只会误导 #}
+        <p class="muted">正在计算，通常需要 3–10 秒，请勿刷新页面。</p>
+      </div>
+    </div>
+
+    <div id="plan-result">
+      <div class="card empty-card">
+        <h2>还没有方案</h2>
+        <p class="muted">左侧填好条件后点「生成行程」，结果会显示在这里。</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

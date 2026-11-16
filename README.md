@@ -1,5 +1,7 @@
 # transparent-umbrella
 
+[![CI](https://github.com/encoY3332333/transparent-umbrella/actions/workflows/ci.yml/badge.svg)](https://github.com/encoY3332333/transparent-umbrella/actions/workflows/ci.yml)
+
 > 智能旅游规划系统（SmartTrip）——输入出发地、目的地、时间与预算，结合天气、历史游览人数与当地活动，自动编排一份可执行、可调整的旅行行程。
 
 ![status](https://img.shields.io/badge/status-v0.1.0--planning-blue)
@@ -37,15 +39,15 @@ SmartTrip 把这些重复劳动自动化。用户只需输入少量条件，系�
 | 里程碑 | 内容 | 状态 |
 |---|---|---|
 | 文档基线 | SRS v1.0（14 张 UML 图已嵌入）、架构说明、接口清单、7 份 ADR | ✅ 已冻结 |
-| 协作规范 | 附件 3 协作规范、Issue/PR 模板、CODEOWNERS、Commit 信息校验 | ✅ 已生效 |
-| 任务拆分 | [14 个 Issue](https://github.com/encoY3332333/transparent-umbrella/issues?q=is%3Aissue) 分入 5 个 Milestone，共 92 人时，已指派到 3 人 | ✅ 已创建 |
-| 工程基线 | `backend/` FastAPI 脚手架、45 个测试函数（参数化展开 54 个用例）、四段 CI | ✅ 已跑通（#1 已关闭） |
-| 协作实跑 | 截至 2026-11-16：12 个已合并 PR，详见 [Pull requests] | 🟡 进行中（交叉评审行内评论已超 15 条） |
+| 协作规范 | 附件 3 协作规范、Issue/PR 模板、CODEOWNERS、Commit 信息校验、交叉评审指南 | ✅ 已生效 |
+| 任务拆分 | [17 个 Issue](https://github.com/encoY3332333/transparent-umbrella/issues?q=is%3Aissue) 分入 5 个 Milestone，共 92 人时，已指派到 3 人 | ✅ 已创建，已关闭 11 个 |
+| 工程基线 | `backend/` FastAPI + Jinja2 单体、**210 个测试用例**、5 个 CI job | ✅ 已跑通（#1 已关闭） |
+| 协作实跑 | 截至 2026-11-16：**23 个已合并 PR**（A 6 / B 15 / C 2）、行内评审 41 条 | 🟡 进行中（#49 待第三方 Approve） |
 
 - 版本发布：[`v0.1.0`](https://github.com/encoY3332333/transparent-umbrella/releases/tag/v0.1.0)（2026-11-11，需求基线 + 工程规范）
 - 任务看板：[Issues](https://github.com/encoY3332333/transparent-umbrella/issues) · [Milestones](https://github.com/encoY3332333/transparent-umbrella/milestones)
 - 考核项对照：[`docs/assessment-checklist.md`](./docs/assessment-checklist.md)（A1–A8 / B1–B7 逐项自查）
-- 评审与互评：`docs/guides/评审与互评操作指南.md`（交叉评审安排、6 条下限、互评表；链接在 #39 合并后生效）
+- 评审与互评：[`docs/guides/评审与互评操作指南.md`](./docs/guides/评审与互评操作指南.md)（交叉评审安排、6 条下限、互评表）
 - 会议记录：[`docs/meetings/`](./docs/meetings/) · 进展报告：[`docs/reports/`](./docs/reports/) · 架构决策：[`docs/adr/`](./docs/adr/)
 
 ## 技术栈
@@ -182,11 +184,11 @@ transparent-umbrella/
 
 | 成员 | 角色 | 主要职责 | GitHub |
 |---|---|---|---|
-| 【组长】 | Maintainer / Tech Lead | 架构、排程引擎、仓库治理、CI、评审、发布 | @encoY3332333 |
-| 【组员1】 | Requirements / 页面与交互 | 需求获取与用例建模、Jinja2 模板与 HTMX 交互、评审 | @【组员1的GitHub名】 |
-| 【组员2】 | QA & Data / 接口与数据 | 外部数据源适配、SQLAlchemy 模型、路由与 Schemas、测试与覆盖率 | @【组员2的GitHub名】 |
+| A（组长） | Maintainer / Tech Lead | 架构、排程引擎、仓库治理、CI、评审、发布 | @encoY3332333 |
+| C（组员1） | Requirements / 页面与交互 | 需求获取与用例建模、Jinja2 模板与 HTMX 交互、评审 | @star-X09 |
+| B（组员2） | QA & Data / 接口与数据 | 外部数据源适配、SQLAlchemy 模型、路由与 Schemas、测试与覆盖率 | @richkoijx |
 
-评审交叉安排：组长的 PR 由组员1 评审，组员1 的 PR 由组员2 评审，组员2 的 PR 由组长评审——**任何 PR 都不允许自评自合**。
+评审交叉安排：A 的 PR 由 C 评审，C 的 PR 由 B 评审，B 的 PR 由 A 评审——**任何 PR 都不允许自评自合**。
 
 ## 贡献流程
 
@@ -202,7 +204,7 @@ git push -u origin feature/12-itinerary-schedule
 
 详细规范（分支命名、Commit 类型、PR 模板、评审 6 维度清单、6 条硬性约束）见 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
 
-**main 分支受保护**（ruleset `protect-main`，2026-11-12 开启）：禁止直推，至少 1 名他人 Approve，CI 必须通过；配置截图见 `docs/evidence/branch-protection-20261112.png`。
+**main 分支受保护**（ruleset `protect-main`，2026-11-12 开启）：禁止直推，至少 1 名他人 Approve、CI 必须通过、评审线程全部解决；配置见 `docs/evidence/protect-main-ruleset.json`，截图见 `docs/evidence/branch-protection-20261112.png`。
 
 ## 版本规划
 
