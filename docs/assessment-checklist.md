@@ -64,10 +64,9 @@
 | 分支策略与命名规范 | 已定义，CI 有正则校验 | `CONTRIBUTING.md` 第 3 章、`ci.yml` 的 `lint-repo` |
 | Commit 规范 | Conventional Commits + 8 种 type + 本项目 scope 约定 | `CONTRIBUTING.md` 第 5 章 |
 | 仓库目录结构 | 已定，见 README 项目结构 | `README.md` |
-| 分支保护生效 | ⬜ **未开启**（需仓库所有者 A 操作） | `.github/BRANCH_PROTECTION.md` 第 2 节 |
+| 分支保护生效 | ✅ **已开启**（ruleset `protect-main`，2026-11-12） | Settings → Rules → protect-main，截图 `docs/evidence/branch-protection-20261112.png` |
 
-**缺口**：分支保护没开，现在任何人都能直推 `main`，也能自评自合（12 个已合并 PR 正是这样合进去的）。
-这一项是 A4 的硬性检查点，必须由仓库所有者 `encoY3332333` 在 Settings → Rules 中开启，并截图存 `docs/evidence/`。
+**历史说明**：早期 12 个 PR 是在分支保护开启前自评自合合并的；2026-11-12 起 `protect-main` 生效，此后任何 PR 都需至少 1 名他人 Approve、CI 通过、评论线程全部解决后才能合并。
 
 ### A5 PR 与评审（12 分）🟡
 

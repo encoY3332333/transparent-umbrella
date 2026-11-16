@@ -39,13 +39,13 @@ SmartTrip 把这些重复劳动自动化。用户只需输入少量条件，系�
 | 文档基线 | SRS v1.0（14 张 UML 图已嵌入）、架构说明、接口清单、7 份 ADR | ✅ 已冻结 |
 | 协作规范 | 附件 3 协作规范、Issue/PR 模板、CODEOWNERS、Commit 信息校验 | ✅ 已生效 |
 | 任务拆分 | [14 个 Issue](https://github.com/encoY3332333/transparent-umbrella/issues?q=is%3Aissue) 分入 5 个 Milestone，共 92 人时，已指派到 3 人 | ✅ 已创建 |
-| 工程基线 | `backend/` FastAPI 脚手架、45 个测试用例、四段 CI | ✅ 已跑通（#1 已关闭） |
-| 协作实跑 | 18 个 PR（12 已合并 / 1 关闭 / 5 待评审）、39 次 CI 运行 | 🟡 待补交叉评审 |
+| 工程基线 | `backend/` FastAPI 脚手架、45 个测试函数（参数化展开 54 个用例）、四段 CI | ✅ 已跑通（#1 已关闭） |
+| 协作实跑 | 截至 2026-11-16：12 个已合并 PR，详见 [Pull requests] | 🟡 进行中（交叉评审行内评论已超 15 条） |
 
 - 版本发布：[`v0.1.0`](https://github.com/encoY3332333/transparent-umbrella/releases/tag/v0.1.0)（2026-11-11，需求基线 + 工程规范）
 - 任务看板：[Issues](https://github.com/encoY3332333/transparent-umbrella/issues) · [Milestones](https://github.com/encoY3332333/transparent-umbrella/milestones)
 - 考核项对照：[`docs/assessment-checklist.md`](./docs/assessment-checklist.md)（A1–A8 / B1–B7 逐项自查）
-- 评审与互评：[`docs/guides/评审与互评操作指南.md`](./docs/guides/评审与互评操作指南.md)（交叉评审安排、6 条下限、互评表）
+- 评审与互评：`docs/guides/评审与互评操作指南.md`（交叉评审安排、6 条下限、互评表；链接在 #39 合并后生效）
 - 会议记录：[`docs/meetings/`](./docs/meetings/) · 进展报告：[`docs/reports/`](./docs/reports/) · 架构决策：[`docs/adr/`](./docs/adr/)
 
 ## 技术栈
@@ -202,7 +202,7 @@ git push -u origin feature/12-itinerary-schedule
 
 详细规范（分支命名、Commit 类型、PR 模板、评审 6 维度清单、6 条硬性约束）见 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
 
-**main 分支受保护**：禁止直推，至少 1 名他人 Approve，CI 必须通过。
+**main 分支受保护**（ruleset `protect-main`，2026-11-12 开启）：禁止直推，至少 1 名他人 Approve，CI 必须通过；配置截图见 `docs/evidence/branch-protection-20261112.png`。
 
 ## 版本规划
 
