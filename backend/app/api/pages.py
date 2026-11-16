@@ -28,3 +28,23 @@ def index(request: Request) -> HTMLResponse:
             "offline": True,
         },
     )
+
+
+@router.get("/itineraries/new", response_class=HTMLResponse)
+def new_itinerary(request: Request) -> HTMLResponse:
+    """生成行程页（UC-03 第一步：填条件）。
+
+    表单提交走 `hx-post` 到片段接口，本页只负责渲染表单与加载态；
+    结果替换进 `#plan-result`，不整页刷新——用户填的条件不会被冲掉。
+    """
+    settings = request.app.state.settings
+    templates: Jinja2Templates = request.app.state.templates
+    return templates.TemplateResponse(
+        request,
+        "itineraries/new.html",
+        {
+            "app_name": settings.app_name,
+            "app_env": settings.app_env,
+            "app_version": settings.app_version,
+        },
+    )

@@ -1,0 +1,17 @@
+{# 生成失败片段。HTTP 状态刻意给 200：HTMX 默认不换非 2xx 的响应体，
+   若返回 422，这块内容永远到不了页面上，用户只会看到结果区被清空。 #}
+<div class="card notice notice-error" role="alert">
+  <strong>没能生成行程</strong>
+  <p>{{ message }}</p>
+  <p class="muted">错误码：<code>{{ code }}</code></p>
+  {% if details %}
+  <ul class="details">
+    {% for item in details %}
+    <li><code>{{ item.field }}</code> — {{ item.reason }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <p class="muted">
+    可以调整条件后重试；若结果一直为空，多半是该城市的景点数据还没导入。
+  </p>
+</div>
