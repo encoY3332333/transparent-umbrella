@@ -7,9 +7,12 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable, Mapping
 
 from app.engine.selector import Candidate, Poi
+
+logger = logging.getLogger(__name__)
 
 
 def calculate_crowd_index(volume: int | None, capacity: int) -> int | None:
@@ -34,10 +37,18 @@ def apply_crowd_index(
     volumes: Mapping[int, int],
 ) -> list[Candidate]:
     """把批量人流量映射到 POI；缺失的 POI 标记为 None（UNKNOWN）。"""
-    return [
-        Candidate(
-            poi=poi,
-            crowd_index=calculate_crowd_index(volumes.get(poi.id), poi.capacity),
+    result: list[Candidate] = []
+    for poi in pois:
+        if poi.capacity <= 0:
+            logger.warning(
+                "POI %s capacity=%s，拥挤度无法计算，按 UNKNOWN 处理", poi.id, poi.capacity
+            )
+        volume = volumes.get(poi.id)
+        result.append(
+            Candidate(
+                poi=poi,
+                crowd_index=calculate_crowd_index(volume, poi.capacity),
+                crowd_known=poi.capacity > 0 and volume is not None,
+            )
         )
-        for poi in pois
-    ]
+    return result

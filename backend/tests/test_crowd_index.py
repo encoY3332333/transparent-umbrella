@@ -47,4 +47,28 @@ def test_apply_crowd_index_marks_missing_as_unknown() -> None:
     [unknown] = apply_crowd_index([poi], {})
 
     assert known.crowd_index == 50
+    assert known.crowd_known is True
     assert unknown.crowd_index is None
+    assert unknown.crowd_known is False
+
+
+def test_capacity_zero_marks_crowd_unknown() -> None:
+    poi = Poi(
+        id=2,
+        name="POI-2",
+        city="西安",
+        category="INDOOR",
+        lat=34.0,
+        lng=108.0,
+        open_time="09:00",
+        close_time="18:00",
+        price=0.0,
+        capacity=0,
+        tags=("人文历史",),
+        status="PUBLISHED",
+    )
+
+    [candidate] = apply_crowd_index([poi], {2: 500})
+
+    assert candidate.crowd_index is None
+    assert candidate.crowd_known is False

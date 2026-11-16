@@ -116,6 +116,19 @@ def test_select_rejects_must_avoid_overlap() -> None:
         CandidateSelector().select(criteria, [make_poi(1)])
 
 
+def test_select_rejects_dropping_must_when_cap_is_too_small() -> None:
+    pois = [make_poi(i) for i in range(1, 21)]
+    criteria = SelectionCriteria(
+        city="西安",
+        must_visit=tuple(range(1, 6)),
+        min_candidates=1,
+        max_candidates=2,
+    )
+
+    with pytest.raises(PoiSelectionError, match="必去 POI"):
+        CandidateSelector().select(criteria, pois)
+
+
 def test_seed_has_enough_published_xian_pois() -> None:
     seed_path = Path(__file__).resolve().parents[1] / "app" / "seed" / "pois.json"
     raw = json.loads(seed_path.read_text(encoding="utf-8"))

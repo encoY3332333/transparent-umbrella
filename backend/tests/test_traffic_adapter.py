@@ -76,3 +76,21 @@ def test_adapter_parses_list_payload(monkeypatch: Any) -> None:
     asyncio.run(adapter.aclose())
 
     assert volumes == {1: 800, 2: 1200}
+
+
+def test_adapter_parses_bare_list_without_crashing(monkeypatch: Any) -> None:
+    adapter = make_adapter()
+
+    async def fake_get_json(
+        path: str,
+        params: dict[str, str] | None = None,
+        *,
+        use_cache: bool = True,
+    ) -> Any:
+        return [{"poiId": 1, "volume": 800}]
+
+    monkeypatch.setattr(adapter, "get_json", fake_get_json)
+    volumes = asyncio.run(adapter.get_historical_volume([1], DATE_RANGE))
+    asyncio.run(adapter.aclose())
+
+    assert volumes == {1: 800}
