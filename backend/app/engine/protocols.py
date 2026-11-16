@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Protocol, runtime_checkable
@@ -51,6 +52,11 @@ class PlanContext:
     # 是为了让只测编排顺序的用例不必造 POI；但真实入口必须传，
     # 空池会被 `CandidateSelector` 判成 `InsufficientPoiData`（宁可报错也不静默出空方案）。
     pois: tuple[Poi, ...] = ()
+    # 当前生效的五项权重（键是 engine 的 `Weights` 字段名：pref/weather/crowd/
+    # travel/cost）。由编排层从 UC-09 的策略版本表读出来放进上下文，
+    # 而不是让 `app/engine/` 自己去查库——engine 是纯净层，不碰 SQLAlchemy。
+    # `None` 表示「调用方没指定」，实现方应退回自己的默认权重。
+    strategy_weights: Mapping[str, float] | None = None
 
 
 @dataclass(frozen=True)

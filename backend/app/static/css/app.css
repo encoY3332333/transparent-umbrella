@@ -368,3 +368,108 @@ code {
 .notice-error { border-left: 4px solid #be123c; }
 .notice-warn { border-left: 4px solid #f59e0b; }
 .notice .details { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
+
+/* ---------------------------------------------------------------
+   S8 策略参数配置页（UC-09 / Issue #13）
+   --------------------------------------------------------------- */
+.page-head { margin: 20px 0 14px; }
+.page-head h1 { margin: 0 0 6px; font-size: 22px; }
+.page-head p { margin: 0; }
+
+[x-cloak] { display: none !important; }
+
+.strategy .card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.strategy .card-head h2 { margin: 0; }
+
+.sum { font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; }
+.sum-ok { color: #047857; }
+/* 和不为 1 时标红（AC）：用 #be123c 而不是纯红，白底上对比度更稳 */
+.sum-bad { color: #be123c; }
+
+.slider-row {
+  display: grid;
+  grid-template-columns: 190px 1fr 88px;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+}
+.slider-row label { font-size: 14px; }
+.slider-row input[type="range"] { width: 100%; accent-color: var(--brand); }
+.slider-row .num {
+  width: 88px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.field { display: block; }
+.field > span { display: block; margin-bottom: 4px; font-size: 14px; }
+.field input {
+  width: 100%;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.checks { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.sticky-actions { position: sticky; bottom: 0; padding: 12px 0; background: var(--bg); }
+
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn-sm { padding: 3px 9px; font-size: 12.5px; }
+
+.msg { font-size: 13.5px; }
+.msg-ok { color: #047857; }
+.msg-bad { color: #be123c; }
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 40;
+}
+.modal-box {
+  width: min(520px, 92vw);
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22);
+}
+.modal-box h3 { margin: 0 0 10px; font-size: 16px; }
+.warn-list { margin: 0; padding-left: 20px; font-size: 14px; color: #b45309; }
+
+.strategy-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.strategy-table th,
+.strategy-table td {
+  padding: 8px 10px;
+  border-top: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+.strategy-table thead th { border-top: 0; color: var(--muted); font-weight: 500; }
+.strategy-table .weights { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+@media (max-width: 720px) {
+  .slider-row { grid-template-columns: 1fr 88px; }
+  .slider-row input[type="range"] { grid-column: 1 / -1; }
+  .checks { grid-template-columns: 1fr; }
+}
