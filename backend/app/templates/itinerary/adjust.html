@@ -90,10 +90,13 @@
   const fixedCost = Number(estimatedNode.textContent.replace(/[^\d.]/g, "")) - activityCost();
 
   function snapshot() {
-    daysRoot.querySelectorAll("[data-lock]").forEach(function (checkbox) {
-      checkbox.toggleAttribute("checked", checkbox.checked);
+    // 在 clone 上同步 checkbox 的 property，避免 snapshot() 修改真实 DOM。
+    const clone = daysRoot.cloneNode(true);
+    const originals = daysRoot.querySelectorAll("[data-lock]");
+    clone.querySelectorAll("[data-lock]").forEach(function (checkbox, index) {
+      checkbox.toggleAttribute("checked", originals[index].checked);
     });
-    return daysRoot.innerHTML;
+    return clone.innerHTML;
   }
 
   function updateBudget() {
