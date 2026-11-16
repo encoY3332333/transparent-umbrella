@@ -152,6 +152,12 @@
       return;
     }
 
+    // 锁定是“不可调整”的统一语义：移动和删除都必须先拒绝。
+    if (card.dataset.locked === "true") {
+      window.alert("这个活动已锁定，不能调整。请先取消锁定。");
+      return;
+    }
+
     if (action === "delete") {
       if (!window.confirm("确定删除这个活动？")) return;
       pushHistory();
@@ -161,10 +167,6 @@
     }
 
     if (action === "move-up" || action === "move-down") {
-      if (card.dataset.locked === "true") {
-        window.alert("这个活动已锁定，不能移动。");
-        return;
-      }
       const sibling =
         action === "move-up" ? card.previousElementSibling : card.nextElementSibling;
       if (!sibling) return;
