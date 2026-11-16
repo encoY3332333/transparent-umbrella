@@ -8,11 +8,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api import admin_strategy, health, itineraries
+from app.api import admin_strategy, conditions, health, itineraries
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(health.router)
 api_router.include_router(itineraries.router)
+api_router.include_router(conditions.router)
 api_router.include_router(admin_strategy.router)
 
 __all__ = ["api_router"]
