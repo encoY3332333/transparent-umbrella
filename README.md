@@ -182,11 +182,11 @@ transparent-umbrella/
 
 | 成员 | 角色 | 主要职责 | GitHub |
 |---|---|---|---|
-| 【组长】 | Maintainer / Tech Lead | 架构、排程引擎、仓库治理、CI、评审、发布 | @encoY3332333 |
-| 【组员1】 | Requirements / 页面与交互 | 需求获取与用例建模、Jinja2 模板与 HTMX 交互、评审 | @【组员1的GitHub名】 |
-| 【组员2】 | QA & Data / 接口与数据 | 外部数据源适配、SQLAlchemy 模型、路由与 Schemas、测试与覆盖率 | @【组员2的GitHub名】 |
+| A（组长） | Maintainer / Tech Lead | 架构、排程引擎、仓库治理、CI、评审、发布 | @encoY3332333 |
+| C（组员1） | Requirements / 页面与交互 | 需求获取与用例建模、Jinja2 模板与 HTMX 交互、评审 | @star-X09 |
+| B（组员2） | QA & Data / 接口与数据 | 外部数据源适配、SQLAlchemy 模型、路由与 Schemas、测试与覆盖率 | @richkoijx |
 
-评审交叉安排：组长的 PR 由组员1 评审，组员1 的 PR 由组员2 评审，组员2 的 PR 由组长评审——**任何 PR 都不允许自评自合**。
+评审交叉安排：A 的 PR 由 C 评审，C 的 PR 由 B 评审，B 的 PR 由 A 评审——**任何 PR 都不允许自评自合**。
 
 ## 贡献流程
 

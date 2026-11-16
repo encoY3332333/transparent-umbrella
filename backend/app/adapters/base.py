@@ -30,6 +30,8 @@ class BaseAdapter:
 
     name: ClassVar[str] = "base"
     cache_maxsize: ClassVar[int] = 512
+    # 子类可覆盖（如人流量按天缓存 24h）；None 表示使用全局 cache_ttl_seconds。
+    cache_ttl_seconds: ClassVar[int | None] = None
 
     def __init__(
         self,
@@ -42,9 +44,8 @@ class BaseAdapter:
         self._settings = settings
         self._base_url = base_url.rstrip("/")
         self._api_key = api_key
-        self._cache: TTLCache[str, Any] = TTLCache(
-            maxsize=self.cache_maxsize, ttl=max(settings.cache_ttl_seconds, 1)
-        )
+        ttl = self.cache_ttl_seconds or max(settings.cache_ttl_seconds, 1)
+        self._cache: TTLCache[str, Any] = TTLCache(maxsize=self.cache_maxsize, ttl=max(ttl, 1))
         self._owns_client = client is None
         self._client = client or httpx.AsyncClient(
             base_url=self._base_url,
