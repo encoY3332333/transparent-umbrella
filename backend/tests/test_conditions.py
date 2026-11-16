@@ -114,6 +114,33 @@ def test_condition_page_shows_validation_result(client: TestClient) -> None:
     assert "西安" in response.text
 
 
+def test_condition_page_rejects_non_numeric_budget_with_chinese_message(
+    client: TestClient,
+) -> None:
+    data = {
+        "originCity": "杭州",
+        "destCity": "西安",
+        "startDate": "2026-12-01",
+        "endDate": "2026-12-04",
+        "budget": "abc",
+        "partySize": "2",
+        "partyType": "COUPLE",
+    }
+    response = client.post("/conditions/validate", data=data)
+
+    assert response.status_code == 200
+    assert "预算 必须填写数字" in response.text
+    assert "could not convert string to float" not in response.text
+
+
+def test_validate_accepts_city_with_internal_whitespace(client: TestClient) -> None:
+    payload = {**VALID_PAYLOAD, "originCity": "西安 市", "destCity": "西安 市"}
+    response = client.post("/api/conditions/validate", json=payload)
+
+    assert response.status_code == 200
+    assert response.json()["data"]["resolved"]["origin"]["city"] == "西安"
+
+
 def test_condition_page_shows_error_for_bad_date(client: TestClient) -> None:
     data = {
         "originCity": "杭州",

@@ -44,6 +44,15 @@ def index(request: Request) -> HTMLResponse:
     )
 
 
+def _parse_number(raw: object, field: str, cast: type[float] | type[int]) -> float | int:
+    """表单数字字段转成中文错误，避免把 Python 的英文 ValueError 直接渲染给用户。"""
+    text = str(raw if raw is not None else "").strip()
+    try:
+        return cast(text)
+    except ValueError as exc:
+        raise ValueError(f"{field} 必须填写数字，当前值：{text or '（空）'}") from exc
+
+
 def _parse_poi_ids(raw: str, field: str) -> list[int]:
     """把逗号分隔的 POI ID 转成整数列表；空字符串视为空列表。"""
     if not raw.strip():
@@ -95,8 +104,8 @@ async def condition_validate(request: Request) -> HTMLResponse:
             destCity=str(raw_form.get("destCity", "")).strip(),
             startDate=str(raw_form.get("startDate", "")),
             endDate=str(raw_form.get("endDate", "")),
-            budget=float(str(raw_form.get("budget", "0"))),
-            partySize=int(str(raw_form.get("partySize", "0"))),
+            budget=_parse_number(raw_form.get("budget"), "预算", float),
+            partySize=_parse_number(raw_form.get("partySize"), "同行人数", int),
             partyType=str(raw_form.get("partyType", "SOLO")),
             preferenceTags=form["preferenceTags"],
             mustVisit=_parse_poi_ids(str(raw_form.get("mustVisit", "")), "mustVisit"),
