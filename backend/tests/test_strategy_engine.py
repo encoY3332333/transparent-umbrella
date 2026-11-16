@@ -836,6 +836,28 @@ class TestReasons:
         assert any("长距离通勤" in r for r in reasons)
 
 
+class TestWeightsTolerance:
+    """权重和允差只有一个来源：SRS UC-09 的 ±0.01。
+
+    配置层（`Settings` 启动校验）与评分层（`Weights`）如果用两套数字，
+    就会出现「配置放行、评分抛异常」——同一组权重两个结论。
+    """
+
+    def test_config_and_scorer_share_tolerance(self) -> None:
+        from app.core.config import STRATEGY_WEIGHTS_TOLERANCE
+        from app.engine.scorer import WEIGHTS_SUM_TOLERANCE
+
+        assert STRATEGY_WEIGHTS_TOLERANCE == WEIGHTS_SUM_TOLERANCE
+
+    def test_srs_tolerance_is_accepted(self) -> None:
+        """和为 0.991 在 SRS 的 ±0.01 内，必须放行（组长评审提到的组合）。"""
+        Weights(pref=0.10, weather=0.25, crowd=0.231, travel=0.14, cost=0.27)
+
+    def test_beyond_tolerance_rejected(self) -> None:
+        with pytest.raises(ValueError, match="之和必须为 1"):
+            Weights(pref=0.10, weather=0.25, crowd=0.25, travel=0.15, cost=0.30)
+
+
 # ======================================================================
 # 11. 纯净层约束（architecture.md 分层约束第 3 条）
 # ======================================================================
