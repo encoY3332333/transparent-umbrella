@@ -3,6 +3,7 @@
 只覆盖无外部依赖的纯函数：cost_ratio / crowd_penalty / Weights 校验 /
 calculate_crowd_index。不碰数据库、HTTP、时间。
 """
+
 from __future__ import annotations
 
 import pytest
@@ -14,13 +15,23 @@ from app.engine.selector import Poi
 
 def _poi(price: float = 50.0, capacity: int = 100) -> Poi:
     return Poi(
-        id=1, name="西湖", city="杭州", category="outdoor",
-        lat=30.0, lng=120.0, open_time="08:00", close_time="18:00",
-        price=price, capacity=capacity, tags=(), status="PUBLISHED",
+        id=1,
+        name="西湖",
+        city="杭州",
+        category="outdoor",
+        lat=30.0,
+        lng=120.0,
+        open_time="08:00",
+        close_time="18:00",
+        price=price,
+        capacity=capacity,
+        tags=(),
+        status="PUBLISHED",
     )
 
 
 # ---------- cost_ratio ----------
+
 
 def test_cost_ratio_normal():
     assert cost_ratio(_poi(price=50), budget=100) == pytest.approx(0.5)
@@ -38,6 +49,7 @@ def test_cost_ratio_clamped_to_one():
 
 # ---------- crowd_penalty ----------
 
+
 def test_crowd_penalty_missing_is_neutral():
     # 数据缺失给中性 0.5，而不是 0（不奖励没有数据的 POI）
     assert crowd_penalty(None) == 0.5
@@ -50,6 +62,7 @@ def test_crowd_penalty_bounds():
 
 
 # ---------- Weights 校验 ----------
+
 
 def test_weights_sum_must_be_one():
     with pytest.raises(ValueError, match="之和"):
@@ -67,6 +80,7 @@ def test_weights_valid_passes():
 
 
 # ---------- calculate_crowd_index ----------
+
 
 def test_crowd_index_missing_data():
     assert calculate_crowd_index(None, 100) is None
