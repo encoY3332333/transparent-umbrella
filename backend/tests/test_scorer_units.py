@@ -66,7 +66,7 @@ def test_crowd_penalty_bounds():
 
 def test_weights_sum_must_be_one():
     with pytest.raises(ValueError, match="之和"):
-        Weights(pref=0.2, weather=0.2, crowd=0.2, travel=0.2, cost=0.2)
+        Weights(pref=0.2, weather=0.2, crowd=0.2, travel=0.2, cost=0.3)
 
 
 def test_weights_each_in_range():
