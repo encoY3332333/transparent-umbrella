@@ -1,0 +1,96 @@
+{# 生成结果片段。由 /api/itineraries/generate.fragment 渲染后替换 #plan-result。 #}
+{% if degraded %}
+<div class="card notice notice-warn" role="status">
+  <strong>部分数据不可用</strong>
+  <p class="muted">
+    以下数据源本次未取到，结果基于估算：{{ degraded | join("、") }}。
+    行程可以使用，但耗时与拥挤度可能与实际有偏差。
+  </p>
+</div>
+{% endif %}
+
+<p class="muted result-meta">
+  共 {{ plans | length }} 套方案 · 服务端耗时 {{ duration_ms }} ms
+</p>
+
+{% for plan in plans %}
+<article class="card plan-card">
+  <header class="plan-head">
+    <div>
+      <h2>{{ plan.title }}</h2>
+      <p class="muted">
+        {{ plan.city }} · {{ plan.start_date }} 起 {{ plan.days }} 天 ·
+        {{ plan.party_size }} 人 ·
+        预算 ¥{{ "%.0f" | format(plan.budget) }}
+      </p>
+    </div>
+    <div class="plan-price">
+      <strong>¥{{ "%.0f" | format(plan.total_cost) }}</strong>
+      <span class="muted">门票 ¥{{ "%.0f" | format(plan.budget_breakdown.ticket) }}</span>
+    </div>
+  </header>
+
+  {% if plan.reasons %}
+  <ul class="reasons">
+    {% for reason in plan.reasons %}
+    <li>
+      <span class="basis">{{ reason.basis }}</span>
+      {{ reason.text }}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if plan.conflicts %}
+  <ul class="conflicts">
+    {% for conflict in plan.conflicts %}
+    <li class="conflict-{{ conflict.severity | lower }}">
+      {{ conflict.message }}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <div class="days">
+    {% for day in plan.days %}
+    <section class="day">
+      <h3>
+        第 {{ day.day_no }} 天
+        <span class="muted">{{ day.date }}</span>
+      </h3>
+
+      {% if day.free_slot %}
+      {# 空闲日不渲染成「空白」，否则用户以为是页面坏了 #}
+      <p class="muted free-slot">这一天没有安排活动。</p>
+      {% else %}
+      <ol class="timeline">
+        {% for act in day.activities %}
+        <li class="activity">
+          <span class="time">{{ act.start_time }}–{{ act.end_time }}</span>
+          <span class="activity-main">
+            <strong>{{ act.poi_name }}</strong>
+            <span class="muted">{{ act.category }}</span>
+            {% if act.crowd_shifted %}
+            <span class="chip chip-ok" title="因拥挤度较高而错峰安排">已避峰</span>
+            {% endif %}
+            {% if act.long_transfer %}
+            <span class="chip chip-warn" title="两景点间通勤超过 60 分钟">
+              长途 {{ act.travel_minutes }} 分钟
+            </span>
+            {% endif %}
+          </span>
+          <span class="price">
+            {% if act.cost > 0 %}¥{{ "%.0f" | format(act.cost) }}{% else %}免费{% endif %}
+          </span>
+          {% for warning in act.warnings %}
+          <span class="activity-warn">{{ warning }}</span>
+          {% endfor %}
+        </li>
+        {% endfor %}
+      </ol>
+      {% endif %}
+    </section>
+    {% endfor %}
+  </div>
+</article>
+{% endfor %}

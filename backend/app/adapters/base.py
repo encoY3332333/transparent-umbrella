@@ -18,6 +18,7 @@ from typing import Any, ClassVar
 import httpx
 from cachetools import TTLCache
 
+from app.adapters import call_budget
 from app.core.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -126,6 +127,12 @@ class BaseAdapter:
 
         attempts = self._settings.external_max_retries + 1
         for attempt in range(attempts):
+            # BR-10：先占额度再发请求。`check()` 必须写在 try 外面——
+            # 它抛的 `ExternalCallLimitExceeded` 一旦落进下面的
+            # `except (httpx.HTTPError, json.JSONDecodeError)`，会被当成「这次请求失败」，
+            # 于是又重试一次并再占一次额度，超限这件事就被吞掉了。
+            call_budget.record()
+            call_budget.check()
             try:
                 self.calls += 1
                 response = await self._client.get(path, params=merged)
