@@ -64,6 +64,13 @@ def is_outdoor(poi: Poi) -> bool:
     return poi.category.upper() in OUTDOOR_CATEGORIES
 
 
+# BR-23 权重和的允差。SRS UC-09「StrategyManager 向自己发消息 checkSum()，
+# 校验五项权重之和是否为 1（允许误差 ±0.01）」——按规格取 0.01。
+# 与 `app.core.config.STRATEGY_WEIGHTS_TOLERANCE` 必须一致，
+# 由 tests/test_strategy_engine.py::TestWeightsTolerance 守住。
+WEIGHTS_SUM_TOLERANCE = 0.01
+
+
 @dataclass(frozen=True)
 class Weights:
     """五项评分权重。`__post_init__` 里强制 BR-23（和为 1）。"""
@@ -80,8 +87,8 @@ class Weights:
             if not 0.0 <= value <= 1.0:
                 raise ValueError(f"权重 {name}={value} 必须在 [0,1] 内")
         total = self.pref + self.weather + self.crowd + self.travel + self.cost
-        # BR-23：误差 < 0.001，与 Settings 的校验口径保持一致
-        if abs(total - 1.0) > 0.001:
+        # BR-23 / UC-09：误差 ±0.01
+        if abs(total - 1.0) > WEIGHTS_SUM_TOLERANCE:
             raise ValueError(f"五项权重之和必须为 1，当前 {total:.4f}")
 
     def perturbed(self, name: str, delta: float) -> Weights:

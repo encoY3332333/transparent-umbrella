@@ -449,6 +449,26 @@ class TestCrowdShift:
         assert acts and acts[0].crowd_shifted is False
         assert acts[0].start == time(9, 0)
 
+    def test_late_opening_is_not_counted_as_crowd_shift(self) -> None:
+        """开门晚导致的顺延不能被记成「已避开人流高峰」。
+
+        `_fit()` 里 `arrive` 会被 `max(cursor + travel, open_time)` 抬高，
+        如果直接用 `shifted` 当错峰标志，14:00 才开门的低拥挤 POI 也会被
+        `build_reasons()` 报成「已避开 10:00–15:00 高峰」——理由与事实相反。
+        """
+        poi = make_poi(1, open_time="14:00", close_time="18:00")
+        result = Packer().plan(
+            start_date=DAY,
+            days=1,
+            candidates=[cand(poi, crowd=10)],
+            tourist=tourist(),
+            weather_by_day={DAY: "CLEAR"},
+        )
+        acts = result.days[0].activities
+        assert acts and acts[0].start == time(14, 0)
+        assert acts[0].crowd_shifted is False
+        assert not [r for r in result.reasons if "BR-09" in r], "不应声称已避开人流高峰"
+
     def test_unknown_crowd_is_not_shifted(self) -> None:
         """拥挤度数据缺失时不触发错峰（无法判断是否拥挤）。"""
         poi = make_poi(1, open_time="09:00", close_time="18:00")
@@ -579,6 +599,28 @@ class TestFreeSlot:
         assert day.activity_count == 1
         assert day.free_slot is True
         assert day.free_slot_hint, "自由时段应给出周边可选 POI 提示"
+
+    def test_free_slot_hint_excludes_already_placed(self) -> None:
+        """提示里的「周边可选」不能是当天已经排进去的景点（否则用户看到重复建议）。
+
+        构造：1 个 09:00–12:00 的景点排进 1 个，外加 3 个 13:00–14:20 的景点
+        （午休后到关门不足 90 分钟，排不下），于是当天只有 1 个活动 → free_slot，
+        剩余池仍有 3 个。若直接用原始 candidates[:3]，提示就会把「景点1」重复一遍。
+        """
+        first = make_poi(1, open_time="09:00", close_time="12:00")
+        late = [make_poi(i, open_time="13:00", close_time="14:20") for i in range(2, 5)]
+        result = Packer().plan(
+            start_date=DAY,
+            days=1,
+            candidates=[cand(p, crowd=0) for p in [first, *late]],
+            tourist=tourist(),
+            weather_by_day={DAY: "CLEAR"},
+        )
+        day = result.days[0]
+        assert day.free_slot is True
+        assert [a.name for a in day.activities] == ["景点1"]
+        assert not any("景点1" in h for h in day.free_slot_hint), "提示里重复了当天已排景点"
+        assert len(day.free_slot_hint) == 3
 
     def test_zero_activity_marks_free_slot(self) -> None:
         result = Packer().plan(
@@ -792,6 +834,28 @@ class TestReasons:
         plan = DayPlan(day=DAY, activities=[act])
         reasons = build_reasons([plan], {DAY: "CLEAR"}, Weights())
         assert any("长距离通勤" in r for r in reasons)
+
+
+class TestWeightsTolerance:
+    """权重和允差只有一个来源：SRS UC-09 的 ±0.01。
+
+    配置层（`Settings` 启动校验）与评分层（`Weights`）如果用两套数字，
+    就会出现「配置放行、评分抛异常」——同一组权重两个结论。
+    """
+
+    def test_config_and_scorer_share_tolerance(self) -> None:
+        from app.core.config import STRATEGY_WEIGHTS_TOLERANCE
+        from app.engine.scorer import WEIGHTS_SUM_TOLERANCE
+
+        assert STRATEGY_WEIGHTS_TOLERANCE == WEIGHTS_SUM_TOLERANCE
+
+    def test_srs_tolerance_is_accepted(self) -> None:
+        """和为 0.991 在 SRS 的 ±0.01 内，必须放行（组长评审提到的组合）。"""
+        Weights(pref=0.10, weather=0.25, crowd=0.231, travel=0.14, cost=0.27)
+
+    def test_beyond_tolerance_rejected(self) -> None:
+        with pytest.raises(ValueError, match="之和必须为 1"):
+            Weights(pref=0.10, weather=0.25, crowd=0.25, travel=0.15, cost=0.30)
 
 
 # ======================================================================

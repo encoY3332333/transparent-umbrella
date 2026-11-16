@@ -156,6 +156,9 @@ class _Slot:
     shifted: bool
     walk_after: int
     score: float
+    # 仅表示「因 BR-09 拥挤度而错峰」，与开门时间/午休顺延区分开，
+    # 否则 build_reasons() 会把「14:00 才开门」误报成「已避开人流高峰」。
+    crowd_shifted: bool = False
 
 
 class Packer:
@@ -294,7 +297,7 @@ class Packer:
                     travel_minutes=best.travel,
                     long_transfer=best.travel > LONG_TRANSFER_MINUTES,
                     score=round(best.score, 4),
-                    crowd_shifted=best.shifted,
+                    crowd_shifted=best.crowd_shifted,
                 )
             )
 
@@ -308,7 +311,17 @@ class Packer:
         if plan.activity_count < MIN_ACTIVITIES_PER_DAY:
             # 活动不足：保留已排的，并标记自由时段（Issue #6 验收标准第 6 条）
             plan.free_slot = True
-            plan.free_slot_hint = [f"{c.poi.name}（{c.poi.category}）" for c in candidates[:3]]
+            # 优先用「还没排进这一天」的剩余池；候选池本身就这么小的时候，
+            # 用当天已排的补足（标注「已安排」），免得提示为空。
+            hint = [f"{c.poi.name}（{c.poi.category}）" for c in pool[:3]]
+            if len(hint) < 3:
+                placed = {a.poi_id for a in plan.activities}
+                hint += [
+                    f"{c.poi.name}（{c.poi.category}，已安排）"
+                    for c in candidates
+                    if c.poi.id in placed
+                ][: 3 - len(hint)]
+            plan.free_slot_hint = hint
         return plan
 
     # ------------------------------------------------------------ 单个候选试排
@@ -343,6 +356,7 @@ class Packer:
         close_m = _minutes(_parse_time(poi.close_time))
 
         # 顺延循环：三个可能把活动往后推的原因，逐个处理，直到稳定
+        crowd_shifted = False
         for _ in range(4):
             end = arrive + self.visit_minutes
 
@@ -359,6 +373,8 @@ class Packer:
                 and _in_busy_window(arrive, end)
             ):
                 arrive = max(arrive, _minutes(CROWD_BUSY_WINDOW_END))
+                # 只有「因为拥挤度」才置位；开门晚、午休顺延都不算错峰
+                crowd_shifted = True
                 continue
 
             break
@@ -385,6 +401,7 @@ class Packer:
             shifted=arrive > cursor + travel,
             walk_after=walk_after,
             score=0.0,
+            crowd_shifted=crowd_shifted,
         )
 
     # ------------------------------------------------------------ 辅助

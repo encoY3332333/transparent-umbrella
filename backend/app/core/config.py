@@ -17,6 +17,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 PROJECT_ROOT = BACKEND_DIR.parent
 
+# BR-23 权重和的允差。SRS UC-09 写的是 ±0.01（「允许误差 ±0.01」），
+# engine 层不依赖 config（纯净层约束），因此 `app.engine.scorer.WEIGHTS_SUM_TOLERANCE`
+# 是另一个常量；两者必须相等，由 tests/test_strategy_engine.py::TestWeightsTolerance 守住。
+STRATEGY_WEIGHTS_TOLERANCE = 0.01
+
 
 class Settings(BaseSettings):
     """从环境变量 / `backend/.env` 读取的运行时配置。"""
@@ -94,7 +99,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _check_strategy_weights(self) -> Settings:
-        """BR-23：五项权重之和必须为 1（误差 < 0.001）。"""
+        """BR-23：五项权重之和必须为 1（允差见 STRATEGY_WEIGHTS_TOLERANCE）。"""
         total = (
             self.strategy_w_pref
             + self.strategy_w_weather
@@ -102,7 +107,7 @@ class Settings(BaseSettings):
             + self.strategy_w_travel
             + self.strategy_w_cost
         )
-        if abs(total - 1.0) > 0.001:
+        if abs(total - 1.0) > STRATEGY_WEIGHTS_TOLERANCE:
             msg = f"STRATEGY_W_* 五项权重之和必须为 1，当前为 {total:.4f}"
             raise ValueError(msg)
         return self
