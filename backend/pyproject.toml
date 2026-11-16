@@ -50,15 +50,20 @@ src = ["app", "tests"]
 exclude = ["migrations/versions"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 # B008：FastAPI 的 Depends()/Query() 写在默认值里是官方写法，不是可变默认值错误
-ignore = ["B008"]
+# E501：行长交给 ruff format 管（line-length=100），lint 不重复卡
+# RUF001-003：把中文全角标点（，：等）当「歧义 Unicode」报错，对本项目的中文注释/文档不可用；
+#   其余 RUF 规则（RUF006/010/012/100 等）仍然生效
+ignore = ["B008", "E501", "RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["B011"]
+# RUF022：__all__ 按「分类分组」排列而非字母序，见 engine/__init__.py 的分组注释
+"app/engine/__init__.py" = ["RUF022"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -90,6 +95,7 @@ testpaths = ["tests"]
 addopts = "-q --strict-markers"
 markers = [
   "slow: 耗时较长的测试（默认仍会执行，仅用于本地筛选用）",
+  "perf: 性能基线测试（CI 仅在 main 与 workflow_dispatch 上执行，PR 上跳过）",
 ]
 
 # ---------------------------------------------------------------
@@ -102,6 +108,7 @@ omit = [
   "app/templates/*",
   "app/static/*",
   "app/seed/*",
+  "*/migrations/*",
 ]
 
 [tool.coverage.report]
