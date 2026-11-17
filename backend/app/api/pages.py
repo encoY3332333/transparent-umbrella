@@ -14,11 +14,31 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
+from app.core.deps import DbDep
 from app.core.errors import BusinessError
 from app.schemas.condition import ConditionValidationOut, TravelConditionIn
 from app.services.condition_service import validate_condition
+from app.services.strategy_service import StrategyService
 
 router = APIRouter(tags=["pages"], include_in_schema=False)
+
+# 五项权重的展示名。键必须与 `models.strategy.WEIGHT_KEYS` 一致——
+# 页面、接口、引擎三处用同一套键，靠这一个字典给中文名。
+WEIGHT_LABELS: dict[str, str] = {
+    "preference": "偏好匹配 w_pref",
+    "weather": "天气适配 w_weather",
+    "crowd": "拥挤度 w_crowd",
+    "travel": "通勤代价 w_travel",
+    "cost": "费用 w_cost",
+}
+
+THRESHOLD_LABELS: dict[str, tuple[str, str]] = {
+    "dailyHours": ("单日游玩时长上限", "小时"),
+    "maxWalkMinutes": ("连续步行上限", "分钟"),
+    "longTransferMinutes": ("长途转移阈值", "分钟"),
+    "crowdAvoidThreshold": ("拥挤避峰线", "拥挤度"),
+    "maxIteration": ("降本迭代上限", "次"),
+}
 
 
 def _context(request: Request, **extra: Any) -> dict[str, Any]:
@@ -136,16 +156,11 @@ def new_itinerary(request: Request) -> HTMLResponse:
     表单提交走 `hx-post` 到片段接口，本页只负责渲染表单与加载态；
     结果替换进 `#plan-result`，不整页刷新——用户填的条件不会被冲掉。
     """
-    settings = request.app.state.settings
     templates: Jinja2Templates = request.app.state.templates
     return templates.TemplateResponse(
         request,
         "itineraries/new.html",
-        {
-            "app_name": settings.app_name,
-            "app_env": settings.app_env,
-            "app_version": settings.app_version,
-        },
+        _context(request),
     )
 
 
@@ -157,7 +172,6 @@ def adjustment_page(request: Request, itinerary_id: int) -> HTMLResponse:
     等 #8 的行程详情接口落地后，把 mock 替换为 service 查询即可。
     """
     templates: Jinja2Templates = request.app.state.templates
-    settings = request.app.state.settings
     mock_itinerary = {
         "id": itinerary_id,
         "title": "杭州 → 西安 4 日行程",
@@ -227,10 +241,33 @@ def adjustment_page(request: Request, itinerary_id: int) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "itinerary/adjust.html",
-        {
-            "app_name": settings.app_name,
-            "app_env": settings.app_env,
-            "app_version": settings.app_version,
-            "itinerary": mock_itinerary,
-        },
+        _context(request, itinerary=mock_itinerary),
+    )
+
+
+@router.get("/admin/strategy", response_class=HTMLResponse)
+def admin_strategy(request: Request, session: DbDep) -> HTMLResponse:
+    """策略参数配置页（UC-09 / SRS 第 5 章 S8）。
+
+    页面首屏由服务端渲染（当前参数 + 版本列表），交互部分交给 Alpine：
+    滑块实时求和、一键归一化、发布时的二次确认。**不做整页刷新提交**——
+    权重和不为 1 时要保留用户已经调好的滑块位置，整页刷新会把它们重置回库里的值。
+    """
+    templates: Jinja2Templates = request.app.state.templates
+    service = StrategyService(session)
+    current = service.current()
+    return templates.TemplateResponse(
+        request,
+        "admin/strategy.html",
+        _context(
+            request,
+            current=current,
+            versions=service.list_versions(),
+            weights=current.weights,
+            thresholds=current.thresholds,
+            holiday_factors=current.holiday_factors,
+            disabled_fallbacks=list(current.disabled_fallbacks),
+            weight_labels=WEIGHT_LABELS,
+            threshold_labels=THRESHOLD_LABELS,
+        ),
     )

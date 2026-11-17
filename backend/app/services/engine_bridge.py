@@ -73,6 +73,20 @@ _TITLE_BY_LABEL = {
 }
 
 
+def _to_engine_weights(weights_cls: type[Any], weights: Mapping[str, float]) -> Any:
+    """`{pref, weather, crowd, travel, cost}` → `Weights(...)`，并缩放到精确 1。
+
+    UC-09 允许和落在 1±0.01，而 `Weights.__post_init__` 也按 ±0.01 校验；
+    两边容差一旦有一天不一致，这里就会抛 ValueError 让生成失败。
+    统一除以总和之后和恒等于 1，引擎侧容差怎么改都不受影响。
+    另外还兜住一个坑：库里五项全 0 时（理论上被校验挡住）不能除零。
+    """
+    total = sum(float(value) for value in weights.values())
+    if total <= 0:
+        raise ValueError("策略权重五项之和为 0，无法归一化")
+    return weights_cls(**{name: float(value) / total for name, value in weights.items()})
+
+
 class StrategyEnginePacker:
     """`PlanPacker` 的实现：内部调用 `#6` 的 `StrategyEngine`。"""
 
@@ -93,8 +107,9 @@ class StrategyEnginePacker:
         context: PlanContext,
     ) -> list[PlanDraft]:
         request = _build_request(requirement, context)
+        engine = self._engine_for(context.strategy_weights)
 
-        results = self._engine.plan(candidates, request, must_visit=requirement.must_visit)
+        results = engine.plan(candidates, request, must_visit=requirement.must_visit)
 
         by_id: dict[int, Poi] = {c.poi.id: c.poi for c in candidates}
         drafts: list[PlanDraft] = []
@@ -106,6 +121,30 @@ class StrategyEnginePacker:
                 # 整套方案一个活动都没落成，给用户看只会是空白行程，不如不给
                 logger.warning("第 %d 套方案没有可落库的活动，已跳过", index + 1)
         return drafts
+
+    # ------------------------------------------------------------------
+    def _engine_for(self, weights: Mapping[str, float] | None) -> _StrategyEngineLike:
+        """按本次生成生效的权重构造引擎（UC-09 热生效）。
+
+        每次生成都新建一个 `StrategyEngine`：它本身只持有权重与几个常量，
+        构造是纯字段赋值，比在实例上「改完再改回去」安全得多——
+        后者在并发请求下会把 A 用户的权重串给 B 用户。
+
+        拿不到权重（`#13` 未合入 / 参数非法）时退回 `self._engine`，
+        也就是启动时那份默认权重，行为与之前完全一致。
+        """
+        if not weights:
+            return self._engine
+        try:
+            from app.engine.scorer import Weights
+            from app.engine.strategy_engine import StrategyEngine
+
+            return StrategyEngine(base_weights=_to_engine_weights(Weights, weights))
+        except (ImportError, ValueError, TypeError) as exc:
+            # 参数异常不该让整次生成 500：记日志后用默认权重继续，
+            # 用户至少能拿到一套方案，运维能从日志里看到配置有问题。
+            logger.warning("策略权重无法应用到引擎（%s），本次使用默认权重", exc)
+            return self._engine
 
     # ------------------------------------------------------------------
     def _to_draft(
