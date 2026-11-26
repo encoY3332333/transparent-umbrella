@@ -49,6 +49,7 @@ SmartTrip 把这些重复劳动自动化。用户只需输入少量条件，系�
 - 考核项对照：[`docs/assessment-checklist.md`](./docs/assessment-checklist.md)（A1–A8 / B1–B7 逐项自查）
 - 评审与互评：[`docs/guides/评审与互评操作指南.md`](./docs/guides/评审与互评操作指南.md)（交叉评审安排、6 条下限、互评表）
 - 会议记录：[`docs/meetings/`](./docs/meetings/) · 进展报告：[`docs/reports/`](./docs/reports/) · 架构决策：[`docs/adr/`](./docs/adr/)
+- 软件设计规格说明书：[`docs/sdd/`](./docs/sdd/)（第 2 阶段交付物，8 章 + 追踪矩阵）
 
 ## 技术栈
 
