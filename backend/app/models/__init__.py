@@ -13,6 +13,7 @@ from __future__ import annotations
 from app.models.base import Base
 from app.models.itinerary import Activity, Itinerary, ItineraryDay
 from app.models.strategy import StrategyParameter
+from app.models.tourist import Tourist
 
 __all__ = [
     "Activity",
@@ -20,4 +21,5 @@ __all__ = [
     "Itinerary",
     "ItineraryDay",
     "StrategyParameter",
+    "Tourist",
 ]
