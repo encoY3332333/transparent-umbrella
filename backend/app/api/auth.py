@@ -9,15 +9,13 @@ from __future__ import annotations
 from fastapi import APIRouter, Response
 
 from app.core.config import Settings
-from app.core.deps import CurrentTouristDep, DbDep, OptionalTouristDep, SettingsDep
+from app.core.deps import DbDep, OptionalTouristDep, SettingsDep
 from app.core.security import ACCESS_TOKEN_COOKIE, create_access_token
 from app.models.tourist import Tourist
 from app.schemas.common import ApiResponse
 from app.schemas.tourist import (
     LoginIn,
     LoginOut,
-    PreferenceIn,
-    PreferenceOut,
     SmsCodeIn,
     SmsCodeOut,
     TouristOut,
