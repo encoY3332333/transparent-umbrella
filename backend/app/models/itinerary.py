@@ -58,6 +58,11 @@ class Itinerary(Base):
     # 同一次生成请求产出的多套方案共享 batch_id，前端「换一套看看」靠它查同批
     batch_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
     title: Mapped[str] = mapped_column(String(120), nullable=False)
+    # 行程归属（Issue #2）：未登录也能生成行程（BR-03），因此可空；
+    # 只有「保存」动作才会写入 tourist_id，删除账号时 SET NULL 而不是级联删行程。
+    tourist_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tourist.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     status: Mapped[str] = mapped_column(
         String(16), default=ItineraryStatus.PROPOSED, nullable=False, index=True
     )

@@ -10,12 +10,15 @@ from collections.abc import Iterator
 from functools import lru_cache
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import Settings, get_settings
 from app.core.db import build_engine, build_session_factory
+from app.core.errors import BusinessError, ErrorCode
+from app.core.security import ACCESS_TOKEN_COOKIE, TokenError, tourist_id_from_token
+from app.models.tourist import Tourist
 
 
 @lru_cache(maxsize=1)
@@ -49,3 +52,40 @@ def reset_engine_cache() -> None:
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 DbDep = Annotated[Session, Depends(get_db)]
+
+
+def get_optional_tourist(request: Request, session: DbDep) -> Tourist | None:
+    """解析当前登录游客，未登录或 token 无效都返回 None。
+
+    token 优先取 HttpOnly Cookie（浏览器路径），其次取 `Authorization: Bearer`
+    （脚本 / 自动化测试路径）——两条路径都支持，测试就不必为发 Cookie 折腾
+    半天，线上也不必为了兼容脚本牺牲 Cookie 的安全性。
+    """
+    token = request.cookies.get(ACCESS_TOKEN_COOKIE)
+    if not token:
+        authorization = request.headers.get("authorization", "")
+        scheme, _, credentials = authorization.partition(" ")
+        if scheme.lower() == "bearer" and credentials:
+            token = credentials.strip()
+    if not token:
+        return None
+    try:
+        tourist_id = tourist_id_from_token(token, get_settings())
+    except TokenError:
+        # 过期 / 伪造的 token 一律当未登录：前端拿到 None 就重新走登录，
+        # 比抛 401 更适合「游客本来就可以什么都不登录」的产品设定（BR-03）。
+        return None
+    return session.get(Tourist, tourist_id)
+
+
+OptionalTouristDep = Annotated[Tourist | None, Depends(get_optional_tourist)]
+
+
+def get_current_tourist(tourist: OptionalTouristDep) -> Tourist:
+    """要求必须登录的依赖。未登录抛 UNAUTHORIZED（401 + AUTH 域错误码）。"""
+    if tourist is None:
+        raise BusinessError(ErrorCode.UNAUTHORIZED)
+    return tourist
+
+
+CurrentTouristDep = Annotated[Tourist, Depends(get_current_tourist)]

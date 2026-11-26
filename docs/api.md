@@ -129,10 +129,16 @@ POST /api/auth/sms-code
 **响应**
 
 ```json
-{ "code": "OK", "message": "success", "data": { "expiresIn": 300 } }
+{
+  "code": "OK",
+  "message": "success",
+  "data": { "expiresIn": 300, "retryAfter": 60, "debugCode": "482913" }
+}
 ```
 
-**说明**：同一手机号 60 秒内只能请求一次；验证码 5 分钟有效。开发环境下若未配置短信服务，验证码固定为 `123456` 并打印到日志。
+**说明**：同一手机号 60 秒内只能请求一次（违反返回 `SMS_SEND_TOO_FREQUENT`）；验证码 5 分钟有效，一次性使用。
+
+`debugCode` **只在非生产环境返回**：课程演示与自动化测试不必真接短信网关；生产环境该字段恒为 `null`，等同于不返回。
 
 ---
 
@@ -157,19 +163,23 @@ POST /api/auth/login
 {
   "code": "OK",
   "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
     "expiresIn": 86400,
     "tourist": {
       "id": 1001,
       "phone": "138****8000",
-      "nickname": "游客1001",
+      "nickname": "游客8000",
       "hasPreference": false
     }
   }
 }
 ```
 
-**说明**：`hasPreference = false` 时前端弹出偏好设置浮层（S1 界面）。首次登录自动创建 `tourist` 记录。
+**说明**
+
+- 验证码字段同时接受 `smsCode` 与 `code`，两者等价。
+- 登录态通过 **HttpOnly Cookie**（`access_token`，`SameSite=Lax`，生产环境额外 `Secure`）下发，**不在响应体回传 token**（ADR-001，避免 XSS 直接窃取）；脚本调试可按 `Authorization: Bearer <token>` 传递。
+- 响应中的 `phone` 已脱敏为 `138****8000`，明文只存在服务端。
+- `hasPreference = false` 时前端弹出偏好设置浮层（S1 界面）。首次登录自动创建 `tourist` 记录。连续输错验证码达 `LOGIN_MAX_ATTEMPTS`（默认 5）次后，该手机号锁定 `LOGIN_LOCK_MINUTES`（默认 5）分钟，期间返回 `RATE_LIMITED`。
 
 ---
 
@@ -195,7 +205,7 @@ GET /api/tourists/me/preference
 }
 ```
 
-未建档时 `data` 为 `null`，不返回 404。
+未建档时 `data` 为 `null`，不返回 404；未登录同样返回 `null`。
 
 ---
 
@@ -204,6 +214,8 @@ GET /api/tourists/me/preference
 ```
 PUT /api/tourists/me/preference
 ```
+
+未登录返回 401 `UNAUTHORIZED`——偏好是账号数据，没有匿名写入的语义。
 
 **请求**
 
@@ -218,7 +230,7 @@ PUT /api/tourists/me/preference
 
 | 字段 | 类型 | 必填 | 取值 |
 |---|---|---|---|
-| `preferenceTags` | string[] | 是 | 人文历史 / 自然风光 / 亲子 / 美食 / 摄影 / 夜生活，≤ 6 个 |
+| `preferenceTags` | string[] | 是 | 人文历史 / 自然风光 / 亲子 / 美食 / 摄影 / 夜生活，≤ 6 个；超限返回 `CONDITION_TOO_MANY_TAGS` |
 | `partyType` | enum | 是 | `SOLO` / `COUPLE` / `FAMILY` / `FRIENDS` |
 | `pace` | enum | 是 | `TIGHT` / `MODERATE` / `RELAXED` |
 | `budgetLevel` | enum | 是 | `ECONOMY` / `COMFORT` / `QUALITY` |
@@ -863,3 +875,4 @@ GET /api/health
 | 2026-11-09 | v0.1 | 【组长】 | 初稿：9 个用例的接口契约、统一响应体、30 个错误码 |
 | 2026-11-10 | v0.2 | 【组长】 | 与 Issue #1 脚手架对齐：健康检查改为 `/api/health`（原 `/actuator/health` 是 Java 栈遗留）；分页示例统一从 `page=1` 开始；错误码数量按 `app/core/errors.py` 校正为 30 |
 | 2026-11-16 | v0.3 | 【组员B】 | 补 UC-09 的 10.4 归一化、10.5 回滚；权重和允差按 SRS 更正为 ±0.01；说明「当前生效版本」由 10.1 查询，不进 `/api/health` |
+| 2026-11-26 | v0.4 | 【杨婧妍】 | UC-01 落地（#2）：1.2 登录改为 HttpOnly Cookie 下发、响应体不再回传 token（ADR-001）；手机号脱敏；补 `debugCode` / `retryAfter` / `smsCode` 别名与登录失败锁定口径；1.3 明确未登录也返回 `null` |
